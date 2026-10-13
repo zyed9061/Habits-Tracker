@@ -85,6 +85,32 @@ describe('<HabitsPage /> check-in grid', () => {
     expect(cell('2026-10-08')).toHaveAttribute('data-scheduled', 'false'); // Thu
   });
 
+  it('legend buttons highlight matching cells and toggle off on a second click', async () => {
+    mockFetch({
+      'GET /api/habits': () => [habit({ frequency: { type: 'weekdays', days: [0, 2, 4] }, weeklyGoal: 3 })],
+      'GET /api/checkins': () => [],
+    });
+    render(<HabitsPage />);
+    await screen.findByTestId('habit-1');
+    const list = screen.getByRole('list', { name: 'Habitudes actives' });
+    const legend = screen.getByRole('group', { name: 'Mettre en évidence dans la grille' });
+    const unscheduled = within(legend).getByRole('button', { name: 'non prévu' });
+
+    expect(list).not.toHaveAttribute('data-highlight');
+    expect(unscheduled).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.click(unscheduled);
+    expect(list).toHaveAttribute('data-highlight', 'unscheduled');
+    expect(unscheduled).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(within(legend).getByRole('button', { name: 'prévu' }));
+    expect(list).toHaveAttribute('data-highlight', 'scheduled');
+    expect(unscheduled).toHaveAttribute('aria-pressed', 'false');
+
+    await userEvent.click(within(legend).getByRole('button', { name: 'prévu' }));
+    expect(list).not.toHaveAttribute('data-highlight');
+  });
+
   it('updates optimistically, then applies the server streaks', async () => {
     const put = deferred();
     const f = mockFetch({

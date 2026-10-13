@@ -419,8 +419,44 @@ select {
   width: 20px;
   height: 20px;
   font-size: 0.7rem;
-  cursor: default;
+  cursor: inherit;
   --habit-color: var(--success);
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.legend__item:hover {
+  border-color: var(--border);
+}
+
+.legend__item[aria-pressed='true'] {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Mise en évidence : les cases qui ne correspondent pas à la légende choisie s'estompent. */
+.habit-list .week-cell {
+  transition: opacity 150ms ease, background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+
+.habit-list[data-highlight='done'] .week-cell:not([aria-pressed='true']),
+.habit-list[data-highlight='scheduled'] .week-cell:not([data-scheduled='true']),
+.habit-list[data-highlight='unscheduled'] .week-cell:not([data-scheduled='false']) {
+  opacity: 0.25;
 }
 
 /* ---------- Formulaire ---------- */
