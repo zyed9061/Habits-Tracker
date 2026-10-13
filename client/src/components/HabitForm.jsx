@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../dates.js';
+import { t as translateNow, useI18n, weekdayLong, weekdayShort } from '../i18n/index.js';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const PRESET_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6', '#64748B'];
@@ -22,31 +22,34 @@ function initialState(habit) {
 }
 
 // Mêmes règles que le contrat (section 3) pour éviter un aller-retour 400.
-export function validateHabit(values) {
+// `t` : traducteur des messages (langue courante par défaut).
+export function validateHabit(values, t = translateNow) {
   const errors = {};
   const name = values.name.trim();
-  if (name.length < 1) errors.name = 'Le nom est obligatoire.';
-  else if (name.length > NAME_MAX) errors.name = `${NAME_MAX} caractères maximum.`;
-  if (!HEX_RE.test(values.color)) errors.color = 'Couleur au format #RRGGBB.';
+  if (name.length < 1) errors.name = t('form.err.nameRequired');
+  else if (name.length > NAME_MAX) errors.name = t('form.err.nameMax', { max: NAME_MAX });
+  if (!HEX_RE.test(values.color)) errors.color = t('form.err.color');
   const icon = values.icon.trim();
   // Compte en points de code, comme le serveur (un emoji composé reste valide).
   const iconLength = [...icon].length;
-  if (iconLength < 1 || iconLength > 8) errors.icon = 'Choisissez un emoji.';
+  if (iconLength < 1 || iconLength > 8) errors.icon = t('form.err.icon');
   const days = values.type === 'daily' ? ALL_DAYS : values.days;
-  if (days.length === 0) errors.days = 'Choisissez au moins un jour.';
+  if (days.length === 0) errors.days = t('form.err.days');
   const goal = Number(values.weeklyGoal);
-  if (!Number.isInteger(goal) || goal < 1 || goal > 7) errors.weeklyGoal = 'Objectif entre 1 et 7.';
+  if (!Number.isInteger(goal) || goal < 1 || goal > 7) errors.weeklyGoal = t('form.err.goalRange');
   else if (days.length > 0 && goal > days.length)
-    errors.weeklyGoal = `Objectif au plus égal au nombre de jours prévus (${days.length}).`;
+    errors.weeklyGoal = t('form.err.goalDays', { n: days.length });
   return errors;
 }
 
 export default function HabitForm({ habit, onSubmit, onCancel }) {
+  const { t } = useI18n();
   const [values, setValues] = useState(() => initialState(habit));
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [saving, setSaving] = useState(false);
   const isEdit = Boolean(habit);
+  const errorText = (e) => t(e.key, e.params);
 
   const scheduledCount = values.type === 'daily' ? 7 : values.days.length;
 
@@ -75,7 +78,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const errs = validateHabit(values);
+    const errs = validateHabit(values, (key, params) => ({ key, params })); // clés : traduites au rendu (suit la langue)
     setErrors(errs);
     setSubmitError(null);
     if (Object.keys(errs).length > 0) return;
@@ -97,11 +100,11 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
   }
 
   return (
-    <form className="card habit-form" onSubmit={handleSubmit} aria-label={isEdit ? "Modifier l'habitude" : 'Nouvelle habitude'} noValidate>
-      <h2 className="habit-form__title">{isEdit ? "Modifier l'habitude" : 'Nouvelle habitude'}</h2>
+    <form className="card habit-form" onSubmit={handleSubmit} aria-label={isEdit ? t('form.edit') : t('form.new')} noValidate>
+      <h2 className="habit-form__title">{isEdit ? t('form.edit') : t('form.new')}</h2>
 
       <div className="field">
-        <label htmlFor="habit-name">Nom</label>
+        <label htmlFor="habit-name">{t('form.name')}</label>
         <input
           id="habit-name"
           type="text"
@@ -112,12 +115,12 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
           aria-describedby={errors.name ? 'habit-name-error' : undefined}
           autoFocus
         />
-        {errors.name && <p id="habit-name-error" className="field__error">{errors.name}</p>}
+        {errors.name && <p id="habit-name-error" className="field__error">{errorText(errors.name)}</p>}
       </div>
 
       <div className="field-row">
         <div className="field">
-          <label htmlFor="habit-icon">Icône</label>
+          <label htmlFor="habit-icon">{t('form.icon')}</label>
           <input
             id="habit-icon"
             className="habit-form__icon-input"
@@ -127,25 +130,25 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
             aria-invalid={Boolean(errors.icon)}
             aria-describedby={errors.icon ? 'habit-icon-error' : undefined}
           />
-          <div className="swatches" role="group" aria-label="Icônes suggérées">
+          <div className="swatches" role="group" aria-label={t('form.iconSuggested')}>
             {PRESET_ICONS.map((ic) => (
               <button
                 key={ic}
                 type="button"
                 className={`swatch swatch--icon${values.icon === ic ? ' is-selected' : ''}`}
                 onClick={() => set('icon', ic)}
-                aria-label={`Icône ${ic}`}
+                aria-label={t('form.iconAria', { icon: ic })}
                 aria-pressed={values.icon === ic}
               >
                 {ic}
               </button>
             ))}
           </div>
-          {errors.icon && <p id="habit-icon-error" className="field__error">{errors.icon}</p>}
+          {errors.icon && <p id="habit-icon-error" className="field__error">{errorText(errors.icon)}</p>}
         </div>
 
         <div className="field">
-          <label htmlFor="habit-color">Couleur</label>
+          <label htmlFor="habit-color">{t('form.color')}</label>
           <input
             id="habit-color"
             type="color"
@@ -154,7 +157,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
             aria-invalid={Boolean(errors.color)}
             aria-describedby={errors.color ? 'habit-color-error' : undefined}
           />
-          <div className="swatches" role="group" aria-label="Couleurs suggérées">
+          <div className="swatches" role="group" aria-label={t('form.colorSuggested')}>
             {PRESET_COLORS.map((c) => (
               <button
                 key={c}
@@ -162,21 +165,21 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
                 className={`swatch${values.color.toUpperCase() === c ? ' is-selected' : ''}`}
                 style={{ background: c }}
                 onClick={() => set('color', c)}
-                aria-label={`Couleur ${c}`}
+                aria-label={t('form.colorAria', { color: c })}
                 aria-pressed={values.color.toUpperCase() === c}
               />
             ))}
           </div>
-          {errors.color && <p id="habit-color-error" className="field__error">{errors.color}</p>}
+          {errors.color && <p id="habit-color-error" className="field__error">{errorText(errors.color)}</p>}
         </div>
       </div>
 
       <fieldset className="field">
-        <legend>Fréquence</legend>
+        <legend>{t('form.frequency')}</legend>
         <div className="segmented">
           <label>
             <input type="radio" name="frequency" value="daily" checked={values.type === 'daily'} onChange={() => setType('daily')} />
-            Tous les jours
+            {t('form.daily')}
           </label>
           <label>
             <input
@@ -186,35 +189,35 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
               checked={values.type === 'weekdays'}
               onChange={() => setType('weekdays')}
             />
-            Jours précis
+            {t('form.weekdays')}
           </label>
         </div>
         {values.type === 'weekdays' && (
           <div
             className="day-picker"
             role="group"
-            aria-label="Jours prévus"
+            aria-label={t('form.days')}
             aria-describedby={errors.days ? 'habit-days-error' : undefined}
           >
-            {WEEKDAY_SHORT.map((label, i) => (
+            {Array.from({ length: 7 }, (_, i) => (
               <button
                 key={i}
                 type="button"
                 className={`day-picker__day${values.days.includes(i) ? ' is-selected' : ''}`}
                 onClick={() => toggleDay(i)}
                 aria-pressed={values.days.includes(i)}
-                aria-label={WEEKDAY_LONG[i]}
+                aria-label={weekdayLong(i)}
               >
-                {label}
+                {weekdayShort(i)}
               </button>
             ))}
           </div>
         )}
-        {errors.days && <p id="habit-days-error" className="field__error">{errors.days}</p>}
+        {errors.days && <p id="habit-days-error" className="field__error">{errorText(errors.days)}</p>}
       </fieldset>
 
       <div className="field">
-        <label htmlFor="habit-goal">Objectif hebdomadaire (jours)</label>
+        <label htmlFor="habit-goal">{t('form.goal')}</label>
         <input
           id="habit-goal"
           type="number"
@@ -225,7 +228,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
           aria-invalid={Boolean(errors.weeklyGoal)}
           aria-describedby={errors.weeklyGoal ? 'habit-goal-error' : undefined}
         />
-        {errors.weeklyGoal && <p id="habit-goal-error" className="field__error">{errors.weeklyGoal}</p>}
+        {errors.weeklyGoal && <p id="habit-goal-error" className="field__error">{errorText(errors.weeklyGoal)}</p>}
       </div>
 
       {submitError && (
@@ -236,10 +239,10 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
 
       <div className="actions">
         <button type="button" className="btn" onClick={onCancel} disabled={saving}>
-          Annuler
+          {t('form.cancel')}
         </button>
         <button type="submit" className="btn btn--primary" disabled={saving}>
-          {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer'}
+          {saving ? t('form.saving') : isEdit ? t('form.save') : t('form.create')}
         </button>
       </div>
     </form>
