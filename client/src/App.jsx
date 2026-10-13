@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import HabitsPage from './pages/HabitsPage.jsx';
 import ThemeToggle from './components/ThemeToggle.jsx';
 
@@ -32,7 +32,15 @@ export default function App() {
               </Suspense>
             }
           />
-          <Route path="*" element={<p className="state">Page introuvable.</p>} />
+          <Route
+            path="*"
+            element={
+              <div className="state">
+                <p>Page introuvable.</p>
+                <Link to="/">Retour aux habitudes</Link>
+              </div>
+            }
+          />
         </Routes>
       </main>
     </div>

@@ -52,6 +52,7 @@ describe('<App /> routing and layout', () => {
     mockFetch({});
     renderAt('/nope');
     expect(screen.getByText('Page introuvable.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Retour aux habitudes' })).toHaveAttribute('href', '/');
   });
 
   it('theme select sets data-theme and persists it, "system" removes it', async () => {

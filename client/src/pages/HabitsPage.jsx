@@ -4,12 +4,30 @@ import { lastSevenDays, toDateKey } from '../dates.js';
 import HabitForm from '../components/HabitForm.jsx';
 import HabitRow from '../components/HabitRow.jsx';
 
+const DAY_REFRESH_MS = 60_000;
+const ROW_ERROR_MS = 5000;
+
+// Légende interactive : un clic met en évidence les cases correspondantes (un second clic annule).
+const LEGEND_ITEMS = [
+  { id: 'done', label: 'fait', swatch: 'is-checked' },
+  { id: 'scheduled', label: 'prévu', swatch: '' },
+  { id: 'unscheduled', label: 'non prévu', swatch: 'is-unscheduled' },
+];
+
 const cellKey = (habitId, date) => `${habitId}|${date}`;
+
+// Ajoute ou retire `key` d'un Set d'état (copie immuable).
+const withMember = (set, key, value) => {
+  const next = new Set(set);
+  if (value) next.add(key);
+  else next.delete(key);
+  return next;
+};
 
 export default function HabitsPage() {
   // La grille suit le changement de jour (minuit, onglet resté ouvert, veille).
   const [todayKey, setTodayKey] = useState(() => toDateKey(new Date()));
-  const days = useMemo(() => lastSevenDays(), [todayKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const days = useMemo(() => lastSevenDays(), [todayKey]); // recalculé uniquement au changement de jour
   const [habits, setHabits] = useState([]);
   const [checked, setChecked] = useState(() => new Set());
   const [pending, setPending] = useState(() => new Set());
@@ -20,6 +38,7 @@ export default function HabitsPage() {
   // null = fermé, { habit: null } = création, { habit } = modification
   const [editing, setEditing] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [highlight, setHighlight] = useState(null); // null | done | scheduled | unscheduled
   const [archived, setArchived] = useState({ status: 'idle', items: [], error: null });
   const errorTimers = useRef({});
 
@@ -53,7 +72,7 @@ export default function HabitsPage() {
 
   useEffect(() => {
     const refresh = () => setTodayKey(toDateKey(new Date()));
-    const timer = setInterval(refresh, 60_000);
+    const timer = setInterval(refresh, DAY_REFRESH_MS);
     document.addEventListener('visibilitychange', refresh);
     window.addEventListener('focus', refresh);
     return () => {
@@ -81,7 +100,7 @@ export default function HabitsPage() {
         delete next[habitId];
         return next;
       });
-    }, 5000);
+    }, ROW_ERROR_MS);
   }
 
   function patchHabit(id, fields) {
@@ -91,20 +110,8 @@ export default function HabitsPage() {
   // Mise à jour optimiste : la case change tout de suite, rollback si l'API échoue.
   async function toggle(habit, date, done) {
     const key = cellKey(habit.id, date);
-    const setCell = (value) =>
-      setChecked((prev) => {
-        const next = new Set(prev);
-        if (value) next.add(key);
-        else next.delete(key);
-        return next;
-      });
-    const setCellPending = (value) =>
-      setPending((prev) => {
-        const next = new Set(prev);
-        if (value) next.add(key);
-        else next.delete(key);
-        return next;
-      });
+    const setCell = (value) => setChecked((prev) => withMember(prev, key, value));
+    const setCellPending = (value) => setPending((prev) => withMember(prev, key, value));
 
     setCell(done);
     setCellPending(true);
@@ -218,7 +225,7 @@ export default function HabitsPage() {
 
       {status === 'ready' && habits.length > 0 && (
         <>
-          <ul className="habit-list" aria-label="Habitudes actives">
+          <ul className="habit-list" aria-label="Habitudes actives" data-highlight={highlight ?? undefined}>
             {habits.map((habit) => (
               <HabitRow
                 key={habit.id}
@@ -233,11 +240,22 @@ export default function HabitsPage() {
               />
             ))}
           </ul>
-          <p className="legend text-muted">
-            <span className="legend__swatch week-cell is-checked" aria-hidden="true">✓</span> fait
-            <span className="legend__swatch week-cell" aria-hidden="true" /> prévu
-            <span className="legend__swatch week-cell is-unscheduled" aria-hidden="true" /> non prévu
-          </p>
+          <div className="legend" role="group" aria-label="Mettre en évidence dans la grille">
+            {LEGEND_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="legend__item"
+                aria-pressed={highlight === item.id}
+                onClick={() => setHighlight((current) => (current === item.id ? null : item.id))}
+              >
+                <span className={`legend__swatch week-cell ${item.swatch}`} aria-hidden="true">
+                  {item.id === 'done' ? '✓' : ''}
+                </span>
+                {item.label}
+              </button>
+            ))}
+          </div>
         </>
       )}
 

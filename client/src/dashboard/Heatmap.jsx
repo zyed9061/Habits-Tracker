@@ -82,7 +82,8 @@ export default function Heatmap({ year, days }) {
   };
 
   const totals = days.reduce((a, d) => ({ c: a.c + d.completed, s: a.s + d.scheduled }), { c: 0, s: 0 });
-  const rows = WEEKDAYS_SHORT.map((_, r) => cells.map((c, i) => ({ ...c, i })).filter((c) => c.row === r));
+  const indexed = cells.map((c, i) => ({ ...c, i }));
+  const rows = WEEKDAYS_SHORT.map((_, r) => indexed.filter((c) => c.row === r));
 
   return (
     <div className="dv-heatmap" ref={wrapRef} onMouseLeave={() => setTip(null)}>

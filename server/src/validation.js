@@ -9,6 +9,7 @@ export const badRequest = (message) => new HttpError(400, message);
 export const notFound = (message) => new HttpError(404, message);
 
 const COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+const NAME_MAX = 60;
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -16,8 +17,8 @@ const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArr
 function validateName(name) {
   if (typeof name !== 'string') throw badRequest('name doit être une chaîne de caractères');
   const trimmed = name.trim();
-  if (trimmed.length < 1 || trimmed.length > 60) {
-    throw badRequest('name doit contenir entre 1 et 60 caractères');
+  if (trimmed.length < 1 || trimmed.length > NAME_MAX) {
+    throw badRequest(`name doit contenir entre 1 et ${NAME_MAX} caractères`);
   }
   return trimmed;
 }

@@ -41,7 +41,6 @@ function query(params) {
 // Habitudes (F1)
 export const getHabits = ({ includeArchived = false } = {}) =>
   request(`/habits${query({ includeArchived: includeArchived ? 'true' : undefined })}`);
-export const getHabit = (id) => request(`/habits/${id}`);
 export const createHabit = (data) => request('/habits', { method: 'POST', body: data });
 export const updateHabit = (id, data) => request(`/habits/${id}`, { method: 'PATCH', body: data });
 export const archiveHabit = (id) => request(`/habits/${id}/archive`, { method: 'POST' });

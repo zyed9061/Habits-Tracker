@@ -6,7 +6,7 @@ import { getStatsDaily, getStatsHeatmap, getStatsRanking, getStatsSummary, getSt
 export function useAsync(loader, deps = []) {
   const [state, setState] = useState({ data: null, error: null, loading: true });
   const reqId = useRef(0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // `deps` pilote la stabilité du loader (le loader inline change à chaque rendu).
   const run = useCallback(loader, deps);
 
   const reload = useCallback(() => {
