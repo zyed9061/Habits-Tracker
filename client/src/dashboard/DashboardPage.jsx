@@ -4,6 +4,7 @@ import KpiCards from './KpiCards.jsx';
 import Panel from './Panel.jsx';
 import Heatmap, { isHeatmapEmpty } from './Heatmap.jsx';
 import { DailyChart, RankingChart, WeekdayChart } from './Charts.jsx';
+import { DAILY_DAYS, RANKING_DAYS, WEEKDAY_WEEKS } from './constants.js';
 import { useDaily, useHeatmap, useRanking, useSummary, useWeekday } from './useStats.js';
 
 // Borne basse acceptée par GET /api/stats/heatmap (contrat § 8.3).
@@ -17,9 +18,9 @@ export default function DashboardPage() {
 
   const summary = useSummary();
   const heatmap = useHeatmap(year);
-  const daily = useDaily(30);
-  const weekday = useWeekday(12);
-  const ranking = useRanking(30);
+  const daily = useDaily(DAILY_DAYS);
+  const weekday = useWeekday(WEEKDAY_WEEKS);
+  const ranking = useRanking(RANKING_DAYS);
 
   return (
     <div className="dv-page">
@@ -68,7 +69,7 @@ export default function DashboardPage() {
 
       <div className="dv-grid-2">
         <Panel
-          title="Complétion sur 30 jours"
+          title={`Complétion sur ${DAILY_DAYS} jours`}
           subtitle="Taux quotidien, toutes habitudes"
           state={daily}
           isEmpty={noneScheduled}
@@ -77,7 +78,7 @@ export default function DashboardPage() {
         </Panel>
         <Panel
           title="Par jour de la semaine"
-          subtitle="Taux moyen sur les 12 dernières semaines"
+          subtitle={`Taux moyen sur les ${WEEKDAY_WEEKS} dernières semaines`}
           state={weekday}
           isEmpty={noneScheduled}
         >
@@ -87,7 +88,7 @@ export default function DashboardPage() {
 
       <Panel
         title="Classement des habitudes"
-        subtitle="Régularité sur 30 jours · 🔥 série en cours"
+        subtitle={`Régularité sur ${RANKING_DAYS} jours · 🔥 série en cours`}
         state={ranking}
         isEmpty={(rows) => !rows?.length}
         skeleton={

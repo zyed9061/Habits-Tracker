@@ -38,8 +38,7 @@ function countDay(habits, byHabit, date) {
 }
 
 /** Per-day aggregates over an inclusive date range. */
-function dayRows(habits, checkins, from, to) {
-  const byHabit = indexCheckins(checkins);
+function dayRows(habits, byHabit, from, to) {
   return dateRange(from, to).map((date) => {
     const { completed, scheduled } = countDay(habits, byHabit, date);
     return { date, completed, scheduled, rate: rate(completed, scheduled) };
@@ -62,7 +61,7 @@ export function summary(habits, checkins, today) {
     }
   }
 
-  const last30 = dayRows(habits, checkins, addDays(today, -29), today);
+  const last30 = dayRows(habits, byHabit, addDays(today, -29), today);
   const completed30 = last30.reduce((s, d) => s + d.completed, 0);
   const scheduled30 = last30.reduce((s, d) => s + d.scheduled, 0);
 
@@ -81,18 +80,18 @@ export function heatmap(habits, checkins, year, today) {
   const from = `${String(year).padStart(4, '0')}-01-01`;
   const yearEnd = `${String(year).padStart(4, '0')}-12-31`;
   const to = yearEnd < today ? yearEnd : today;
-  return { year, days: dayRows(habits, checkins, from, to) };
+  return { year, days: dayRows(habits, indexCheckins(checkins), from, to) };
 }
 
 /** The last `days` days, today included, chronological. */
 export function daily(habits, checkins, days, today) {
-  return dayRows(habits, checkins, addDays(today, -(days - 1)), today);
+  return dayRows(habits, indexCheckins(checkins), addDays(today, -(days - 1)), today);
 }
 
 /** 7 rows (Monday→Sunday) over the last `weeks * 7` days, today included. */
 export function weekday(habits, checkins, weeks, today) {
   const rows = Array.from({ length: 7 }, (_, i) => ({ weekday: i, completed: 0, scheduled: 0 }));
-  for (const d of dayRows(habits, checkins, addDays(today, -(weeks * 7 - 1)), today)) {
+  for (const d of dayRows(habits, indexCheckins(checkins), addDays(today, -(weeks * 7 - 1)), today)) {
     const row = rows[weekdayOf(d.date)];
     row.completed += d.completed;
     row.scheduled += d.scheduled;

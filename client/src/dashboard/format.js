@@ -1,5 +1,13 @@
-export const WEEKDAYS_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-export const WEEKDAYS_LONG = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+import { WEEKDAY_LONG, WEEKDAY_SHORT, parseDateKey, toDateKey, weekdayIndex } from '../dates.js';
+
+// Dates « YYYY-MM-DD » traitées en heure locale (jamais toISOString) : helpers partagés avec ../dates.js.
+export const WEEKDAYS_SHORT = WEEKDAY_SHORT;
+export const WEEKDAYS_LONG = WEEKDAY_LONG;
+export const parseDate = parseDateKey;
+export const toDateString = toDateKey;
+// 0 = lundi … 6 = dimanche
+export const mondayIndex = weekdayIndex;
+
 const MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const MONTHS_LONG = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
@@ -10,22 +18,6 @@ export function formatRate(rate) {
 }
 
 export const toPercent = (rate) => (rate === null || rate === undefined ? null : Math.round(rate * 1000) / 10);
-
-// Dates « YYYY-MM-DD » traitées en heure locale (jamais toISOString).
-export function parseDate(str) {
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-
-export function toDateString(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-// 0 = lundi … 6 = dimanche
-export const mondayIndex = (date) => (date.getDay() + 6) % 7;
 
 export const monthShort = (i) => MONTHS_SHORT[i];
 
@@ -38,5 +30,3 @@ export function formatLongDate(str) {
   const d = parseDate(str);
   return `${WEEKDAYS_LONG[mondayIndex(d)]} ${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 }
-
-export const formatCount = (completed, scheduled) => `${completed}/${scheduled}`;

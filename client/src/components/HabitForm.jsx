@@ -4,6 +4,7 @@ import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../dates.js';
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const PRESET_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6', '#64748B'];
 const PRESET_ICONS = ['📚', '🏃', '💧', '🧘', '🥗', '💤', '✍️', '🎸'];
+const NAME_MAX = 60;
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
 function initialState(habit) {
@@ -25,7 +26,7 @@ export function validateHabit(values) {
   const errors = {};
   const name = values.name.trim();
   if (name.length < 1) errors.name = 'Le nom est obligatoire.';
-  else if (name.length > 60) errors.name = '60 caractères maximum.';
+  else if (name.length > NAME_MAX) errors.name = `${NAME_MAX} caractères maximum.`;
   if (!HEX_RE.test(values.color)) errors.color = 'Couleur au format #RRGGBB.';
   const icon = values.icon.trim();
   // Compte en points de code, comme le serveur (un emoji composé reste valide).
@@ -65,6 +66,8 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
       const days = v.days.includes(day) ? v.days.filter((d) => d !== day) : [...v.days, day].sort((a, b) => a - b);
       // L'objectif suit le nombre de jours : il ne doit pas le dépasser.
       const goal = Number(v.weeklyGoal) || 1;
+      // Sans jour : on garde l'objectif. Sinon on le ramène au nombre de jours s'il le dépasse
+      // ou s'il suivait déjà l'ancien nombre de jours (objectif = « tous les jours prévus »).
       const weeklyGoal = days.length === 0 ? goal : goal > days.length || goal === v.days.length ? days.length : goal;
       return { ...v, days, weeklyGoal };
     });

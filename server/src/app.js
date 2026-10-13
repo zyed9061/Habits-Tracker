@@ -147,7 +147,7 @@ export function createApp(db, { today = todayStr } = {}) {
     res.status(404).json({ error: { message: `Route introuvable : ${req.method} ${req.originalUrl}` } });
   });
 
-  // eslint-disable-next-line no-unused-vars
+  // Express recognises an error handler by its 4 arguments: `next` must stay declared.
   app.use((err, req, res, next) => {
     if (err instanceof HttpError) {
       return res.status(err.status).json({ error: { message: err.message } });

@@ -1,13 +1,24 @@
 import { WEEKDAY_SHORT, formatLongDate } from '../dates.js';
 
+// Constantes WCAG : linéarisation sRGB, poids de luminance, seuil noir/blanc.
+const SRGB_LINEAR_THRESHOLD = 0.03928;
+const SRGB_LINEAR_DIVISOR = 12.92;
+const SRGB_OFFSET = 0.055;
+const SRGB_SCALE = 1.055;
+const SRGB_GAMMA = 2.4;
+const LUMA_RED = 0.2126;
+const LUMA_GREEN = 0.7152;
+const LUMA_BLUE = 0.0722;
+const DARK_TEXT_LUMINANCE = 0.179;
+
 // Couleur de la coche lisible sur la couleur de l'habitude (luminance WCAG).
 function contrastOn(hex) {
   const [r, g, b] = [1, 3, 5].map((i) => {
     const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    return c <= SRGB_LINEAR_THRESHOLD ? c / SRGB_LINEAR_DIVISOR : ((c + SRGB_OFFSET) / SRGB_SCALE) ** SRGB_GAMMA;
   });
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return luminance > 0.179 ? '#000000' : '#FFFFFF';
+  const luminance = LUMA_RED * r + LUMA_GREEN * g + LUMA_BLUE * b;
+  return luminance > DARK_TEXT_LUMINANCE ? '#000000' : '#FFFFFF';
 }
 
 // Une habitude : identité, séries (F3) et grille des 7 derniers jours (F2).
