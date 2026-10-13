@@ -1,3 +1,5 @@
+import { t } from './i18n/index.js';
+
 // Client HTTP typé par API_CONTRACT.md. Chaque fonction renvoie le JSON du
 // serveur ou lève une Error portant le message serveur (`error.message`).
 
@@ -10,7 +12,7 @@ async function request(path, { method = 'GET', body } = {}) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error('Serveur injoignable');
+    throw new Error(t('api.unreachable'));
   }
   let data = null;
   const text = await res.text();
@@ -22,7 +24,7 @@ async function request(path, { method = 'GET', body } = {}) {
     }
   }
   if (!res.ok) {
-    const err = new Error(data?.error?.message || `Erreur ${res.status}`);
+    const err = new Error(data?.error?.message || t('api.error', { status: res.status }));
     err.status = res.status;
     throw err;
   }

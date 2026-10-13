@@ -108,11 +108,22 @@ select {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-.theme-toggle select {
+/* Thème + langue : groupés en haut à droite. */
+.app-header__controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-toggle select,
+.lang-switcher select {
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
+  color: inherit;
+  font: inherit;
 }
 
 .app-main {
