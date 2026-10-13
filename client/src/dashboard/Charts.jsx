@@ -12,12 +12,14 @@ import {
   YAxis,
 } from 'recharts';
 import { DAILY_DAYS, RANKING_DAYS, WEEKDAY_WEEKS } from './constants.js';
-import { WEEKDAYS_LONG, WEEKDAYS_SHORT, formatLongDate, formatRate, formatShortDate, toPercent } from './format.js';
+import { useI18n } from '../i18n/index.js';
+import { formatLongDate, formatRate, formatShortDate, toPercent, weekdayLong, weekdayShort } from './format.js';
 
 const AXIS_TICK = { fill: 'var(--text-muted)', fontSize: 12 };
 const PCT_TICKS = [0, 25, 50, 75, 100];
 
 function ChartTooltip({ active, payload, title }) {
+  const { t } = useI18n();
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   return (
@@ -25,10 +27,10 @@ function ChartTooltip({ active, payload, title }) {
       <strong>{title(p)}</strong>
       {p.scheduled ? (
         <span>
-          {formatRate(p.rate)} · {countLabel(p)} cochées
+          {formatRate(p.rate)} · {t('chart.checked', { count: countLabel(p) })}
         </span>
       ) : (
-        <span>Aucune habitude prévue</span>
+        <span>{t('chart.noneScheduled')}</span>
       )}
     </div>
   );
@@ -36,9 +38,10 @@ function ChartTooltip({ active, payload, title }) {
 
 // Alternative textuelle de chaque graphique : tableau des valeurs, replié par défaut.
 function DataTable({ caption, head, rows }) {
+  const { t } = useI18n();
   return (
     <details className="dv-table">
-      <summary>Voir les données</summary>
+      <summary>{t('chart.viewData')}</summary>
       <div className="dv-table__scroll">
         <table>
           <caption>{caption}</caption>
@@ -90,10 +93,11 @@ const pctAxis = (
 const grid = <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="0" />;
 
 export function DailyChart({ data }) {
+  const { t } = useI18n();
   const rows = data.map((d) => ({ ...d, pct: toPercent(d.rate) }));
   return (
     <>
-      <div className="dv-chart" role="img" aria-label={`Taux de complétion quotidien sur ${DAILY_DAYS} jours`}>
+      <div className="dv-chart" role="img" aria-label={t('chart.dailyAria', { n: DAILY_DAYS })}>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={rows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             {grid}
@@ -125,8 +129,8 @@ export function DailyChart({ data }) {
         </ResponsiveContainer>
       </div>
       <DataTable
-        caption={`Complétion sur ${DAILY_DAYS} jours`}
-        head={['Date', 'Cochées / prévues', 'Taux']}
+        caption={t('chart.dailyCaption', { n: DAILY_DAYS })}
+        head={[t('chart.colDate'), t('chart.colDone'), t('chart.colRate')]}
         rows={rows.map((r) => [r.date, formatLongDate(r.date), countCell(r), formatRate(r.rate)])}
       />
     </>
@@ -134,17 +138,18 @@ export function DailyChart({ data }) {
 }
 
 export function WeekdayChart({ data }) {
-  const rows = data.map((d) => ({ ...d, pct: toPercent(d.rate), label: WEEKDAYS_SHORT[d.weekday] }));
+  const { t } = useI18n();
+  const rows = data.map((d) => ({ ...d, pct: toPercent(d.rate), label: weekdayShort(d.weekday) }));
   return (
     <>
-      <div className="dv-chart" role="img" aria-label="Taux de complétion par jour de la semaine">
+      <div className="dv-chart" role="img" aria-label={t('chart.weekdayAria')}>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={rows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             {grid}
             <XAxis dataKey="label" tick={AXIS_TICK} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
             {pctAxis}
             <Tooltip
-              content={<ChartTooltip title={(p) => WEEKDAYS_LONG[p.weekday]} />}
+              content={<ChartTooltip title={(p) => weekdayLong(p.weekday)} />}
               cursor={{ fill: 'var(--border)', fillOpacity: 0.4 }}
               isAnimationActive={false}
             />
@@ -153,9 +158,9 @@ export function WeekdayChart({ data }) {
         </ResponsiveContainer>
       </div>
       <DataTable
-        caption={`Taux par jour de la semaine (${WEEKDAY_WEEKS} dernières semaines)`}
-        head={['Jour', 'Cochées / prévues', 'Taux']}
-        rows={rows.map((r) => [r.weekday, WEEKDAYS_LONG[r.weekday], countCell(r), formatRate(r.rate)])}
+        caption={t('chart.weekdayCaption', { n: WEEKDAY_WEEKS })}
+        head={[t('chart.colDay'), t('chart.colDone'), t('chart.colRate')]}
+        rows={rows.map((r) => [r.weekday, weekdayLong(r.weekday), countCell(r), formatRate(r.rate)])}
       />
     </>
   );
@@ -188,10 +193,11 @@ function RankLabel({ x, y, width, height, index, rows }) {
 }
 
 export function RankingChart({ data }) {
+  const { t } = useI18n();
   const rows = data.map((h) => ({ ...h, key: String(h.habitId), pct: toPercent(h.rate) ?? 0 }));
   return (
     <>
-      <div className="dv-chart" role="img" aria-label={`Classement des habitudes par taux de complétion sur ${RANKING_DAYS} jours`}>
+      <div className="dv-chart" role="img" aria-label={t('chart.rankingAria', { n: RANKING_DAYS })}>
         <ResponsiveContainer width="100%" height={rows.length * 44 + 16}>
           <BarChart
             data={rows}
@@ -228,9 +234,9 @@ export function RankingChart({ data }) {
         </ResponsiveContainer>
       </div>
       <DataTable
-        caption={`Classement des habitudes sur ${RANKING_DAYS} jours`}
-        head={['Habitude', 'Cochées / prévues', 'Taux', 'Série en cours']}
-        rows={rows.map((r) => [r.key, `${r.icon} ${r.name}`, countCell(r), formatRate(r.rate), `${r.currentStreak} j`])}
+        caption={t('chart.rankingCaption', { n: RANKING_DAYS })}
+        head={[t('chart.colHabit'), t('chart.colDone'), t('chart.colRate'), t('chart.colStreak')]}
+        rows={rows.map((r) => [r.key, `${r.icon} ${r.name}`, countCell(r), formatRate(r.rate), t('kpi.days', { n: r.currentStreak })])}
       />
     </>
   );

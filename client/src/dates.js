@@ -1,4 +1,7 @@
+// Ces helpers lisent la langue courante dans le store i18n : les composants qui les appellent
+// doivent aussi s'abonner via useI18n() pour se re-rendre au changement de langue.
 // Dates locales au format YYYY-MM-DD (jamais toISOString : décalage UTC).
+import { getLang, weekdayLong } from './i18n/index.js';
 
 export function toDateKey(d) {
   const y = d.getFullYear();
@@ -27,9 +30,10 @@ export function lastSevenDays(today = new Date()) {
   return days;
 }
 
-export const WEEKDAY_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-export const WEEKDAY_LONG = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-
+// « lundi 08/10 » en français, « Monday 10/08 » en anglais.
 export function formatLongDate(d) {
-  return `${WEEKDAY_LONG[weekdayIndex(d)]} ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const day = d.getDate();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const numeric = getLang() === 'en' ? `${month}/${day}` : `${day}/${month}`;
+  return `${weekdayLong(weekdayIndex(d))} ${numeric}`;
 }
