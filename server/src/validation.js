@@ -17,7 +17,9 @@ const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArr
 function validateName(name) {
   if (typeof name !== 'string') throw badRequest('name doit être une chaîne de caractères');
   const trimmed = name.trim();
-  if (trimmed.length < 1 || trimmed.length > NAME_MAX) {
+  // Counted in code points, like the icon: an emoji counts as one character.
+  const length = [...trimmed].length;
+  if (length < 1 || length > NAME_MAX) {
     throw badRequest(`name doit contenir entre 1 et ${NAME_MAX} caractères`);
   }
   return trimmed;
@@ -31,11 +33,12 @@ function validateColor(color) {
 }
 
 function validateIcon(icon) {
-  if (typeof icon !== 'string' || icon.trim() === '') {
+  const trimmed = typeof icon === 'string' ? icon.trim() : '';
+  if (trimmed === '') {
     throw badRequest('icon doit être un emoji (chaîne non vide)');
   }
-  if ([...icon].length > 8) throw badRequest('icon doit contenir au plus 8 caractères');
-  return icon;
+  if ([...trimmed].length > 8) throw badRequest('icon doit contenir au plus 8 caractères');
+  return trimmed;
 }
 
 function validateFrequency(frequency) {

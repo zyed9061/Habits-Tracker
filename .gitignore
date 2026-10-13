@@ -9,3 +9,7 @@ server/data/*.sqlite*
 !.env.example
 *.log
 .vite/
+
+# Playwright
+client/test-results/
+client/playwright-report/

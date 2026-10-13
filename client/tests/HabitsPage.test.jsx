@@ -53,6 +53,27 @@ describe('<HabitsPage /> states', () => {
     render(<HabitsPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Serveur injoignable');
   });
+
+  // Vite proxy with the API down: 500 with an empty body, no `error.message`.
+  it('treats a 500 without a JSON error message as an unreachable server', async () => {
+    mockFetch({
+      'GET /api/habits': () => ({ status: 500, body: undefined }),
+      'GET /api/checkins': () => [],
+    });
+    render(<HabitsPage />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Serveur injoignable');
+    expect(alert).not.toHaveTextContent('Erreur 500');
+  });
+
+  it('keeps the generic status message for a 4xx without a JSON error message', async () => {
+    mockFetch({
+      'GET /api/habits': () => ({ status: 404, body: undefined }),
+      'GET /api/checkins': () => [],
+    });
+    render(<HabitsPage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Erreur 404');
+  });
 });
 
 describe('<HabitsPage /> check-in grid', () => {
@@ -129,7 +150,7 @@ describe('<HabitsPage /> check-in grid', () => {
     await act(async () => put.resolve({ habitId: 1, date: '2026-10-08', done: true, currentStreak: 3, bestStreak: 5 }));
     await waitFor(() => expect(within(row()).getByTestId('current-streak')).toHaveTextContent('3'));
     expect(cell('2026-10-08')).toHaveAttribute('aria-pressed', 'true');
-    expect(cell('2026-10-08')).toBeEnabled();
+    expect(cell('2026-10-08')).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   it('rolls back the check and shows the error when the API fails', async () => {

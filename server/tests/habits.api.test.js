@@ -48,6 +48,21 @@ describe('POST /api/habits (F1)', () => {
     expect(h.icon).toBe('🇪🇸');
   });
 
+  it('counts the name length in code points (emoji = 1 character)', async () => {
+    const name = '🏃'.repeat(31); // 31 code points, 62 UTF-16 units
+    const res = await ctx.api.post('/api/habits').send(habitBody({ name }));
+    expect(res.status).toBe(201);
+    expect(res.body.name).toBe(name);
+    expect(await createHabit(ctx.api, { name: '🏃'.repeat(60) })).toHaveProperty('name', '🏃'.repeat(60));
+    expectError(await ctx.api.post('/api/habits').send(habitBody({ name: '🏃'.repeat(61) })), 400);
+  });
+
+  it('stores the trimmed icon', async () => {
+    const h = await createHabit(ctx.api, { icon: '  📚 ' });
+    expect(h.icon).toBe('📚');
+    expect((await ctx.api.get(`/api/habits/${h.id}`)).body.icon).toBe('📚');
+  });
+
   const invalid = [
     ['missing name', { name: undefined }],
     ['empty name after trim', { name: '   ' }],
@@ -145,6 +160,13 @@ describe('PATCH /api/habits/:id', () => {
     const res = await ctx.api.patch(`/api/habits/${h.id}`).send({ name: ' Lire 30 min ', color: '#000000' });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ id: h.id, name: 'Lire 30 min', color: '#000000', icon: '📚', frequency: DAILY, weeklyGoal: 7, createdAt: TODAY });
+  });
+
+  it('trims the icon and counts the name in code points', async () => {
+    const h = await createHabit(ctx.api);
+    const res = await ctx.api.patch(`/api/habits/${h.id}`).send({ icon: ' 🧘 ', name: '🧘'.repeat(40) });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ icon: '🧘', name: '🧘'.repeat(40) });
   });
 
   it('caps weeklyGoal when frequency shrinks without weeklyGoal', async () => {

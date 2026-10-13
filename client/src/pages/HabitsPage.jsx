@@ -3,18 +3,28 @@ import * as api from '../api.js';
 import { lastSevenDays, toDateKey } from '../dates.js';
 import HabitForm from '../components/HabitForm.jsx';
 import HabitRow from '../components/HabitRow.jsx';
+import { describeError, useI18n } from '../i18n/I18nContext.jsx';
 
+// Fréquence de vérification du changement de jour (minuit).
 const DAY_REFRESH_MS = 60_000;
+// Durée d'affichage d'une erreur de ligne (check-in, archivage).
 const ROW_ERROR_MS = 5000;
 
 // Légende interactive : un clic met en évidence les cases correspondantes (un second clic annule).
 const LEGEND_ITEMS = [
-  { id: 'done', label: 'fait', swatch: 'is-checked' },
-  { id: 'scheduled', label: 'prévu', swatch: '' },
-  { id: 'unscheduled', label: 'non prévu', swatch: 'is-unscheduled' },
+  { id: 'done', labelKey: 'legendDone', swatch: 'is-checked' },
+  { id: 'scheduled', labelKey: 'legendScheduled', swatch: '' },
+  { id: 'unscheduled', labelKey: 'legendUnscheduled', swatch: 'is-unscheduled' },
 ];
 
 const cellKey = (habitId, date) => `${habitId}|${date}`;
+
+// Les messages affichés sont stockés en { key, name?, err? } et traduits au rendu :
+// ils suivent un changement de langue.
+function renderMessage(msg, t) {
+  const text = t.habits[msg.key];
+  return msg.err ? text(describeError(msg.err, t)) : text(msg.name);
+}
 
 // Ajoute ou retire `key` d'un Set d'état (copie immuable).
 const withMember = (set, key, value) => {
@@ -25,6 +35,8 @@ const withMember = (set, key, value) => {
 };
 
 export default function HabitsPage() {
+  const { t } = useI18n();
+  const h = t.habits;
   // La grille suit le changement de jour (minuit, onglet resté ouvert, veille).
   const [todayKey, setTodayKey] = useState(() => toDateKey(new Date()));
   const days = useMemo(() => lastSevenDays(), [todayKey]); // recalculé uniquement au changement de jour
@@ -41,6 +53,9 @@ export default function HabitsPage() {
   const [highlight, setHighlight] = useState(null); // null | done | scheduled | unscheduled
   const [archived, setArchived] = useState({ status: 'idle', items: [], error: null });
   const errorTimers = useRef({});
+  // Bouton qui a ouvert le formulaire : il reprend le focus à la fermeture.
+  const formOpener = useRef(null);
+  const addButton = useRef(null);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -51,7 +66,7 @@ export default function HabitsPage() {
       setChecked(new Set(checkins.map((c) => cellKey(c.habitId, c.date))));
       setStatus('ready');
     } catch (err) {
-      setLoadError(err.message);
+      setLoadError(err);
       setStatus('error');
     }
   }, [days]);
@@ -62,13 +77,25 @@ export default function HabitsPage() {
       const all = await api.getHabits({ includeArchived: true });
       setArchived({ status: 'ready', items: all.filter((h) => h.archived), error: null });
     } catch (err) {
-      setArchived({ status: 'error', items: [], error: err.message });
+      setArchived({ status: 'error', items: [], error: { key: 'archivedLoadFailed', err } });
     }
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (editing || !formOpener.current) return;
+    const opener = formOpener.current;
+    formOpener.current = null;
+    (opener.isConnected ? opener : addButton.current)?.focus();
+  }, [editing]);
+
+  function openForm(habit) {
+    formOpener.current = document.activeElement;
+    setEditing({ habit });
+  }
 
   useEffect(() => {
     const refresh = () => setTodayKey(toDateKey(new Date()));
@@ -121,7 +148,7 @@ export default function HabitsPage() {
       patchHabit(habit.id, { currentStreak: res.currentStreak, bestStreak: res.bestStreak });
     } catch (err) {
       setCell(!done);
-      showRowError(habit.id, `Impossible d'enregistrer : ${err.message}`);
+      showRowError(habit.id, { key: 'saveFailed', err });
     } finally {
       setCellPending(false);
     }
@@ -131,25 +158,25 @@ export default function HabitsPage() {
     if (editing.habit) {
       const updated = await api.updateHabit(editing.habit.id, payload);
       patchHabit(updated.id, updated);
-      setNotice(`« ${updated.name} » modifiée.`);
+      setNotice({ key: 'updated', name: updated.name });
     } else {
       const created = await api.createHabit(payload);
       setHabits((list) => [...list, created].sort((a, b) => a.id - b.id));
-      setNotice(`« ${created.name} » créée.`);
+      setNotice({ key: 'created', name: created.name });
     }
     setEditing(null);
   }
 
   async function handleArchive(habit) {
-    if (!window.confirm(`Archiver « ${habit.name} » ? Elle n'apparaîtra plus dans la grille.`)) return;
+    if (!window.confirm(h.confirmArchive(habit.name))) return;
     try {
       await api.archiveHabit(habit.id);
       setHabits((list) => list.filter((h) => h.id !== habit.id));
       if (editing?.habit?.id === habit.id) setEditing(null);
-      setNotice(`« ${habit.name} » archivée.`);
+      setNotice({ key: 'archived', name: habit.name });
       if (showArchived) loadArchived();
     } catch (err) {
-      showRowError(habit.id, `Archivage impossible : ${err.message}`);
+      showRowError(habit.id, { key: 'archiveFailed', err });
     }
   }
 
@@ -157,11 +184,11 @@ export default function HabitsPage() {
     try {
       const restored = await api.unarchiveHabit(habit.id);
       setArchived((a) => ({ ...a, items: a.items.filter((h) => h.id !== habit.id) }));
-      setNotice(`« ${restored.name} » désarchivée.`);
+      setNotice({ key: 'unarchived', name: restored.name });
       // Recharge la grille pour récupérer les check-ins de l'habitude restaurée.
       load();
     } catch (err) {
-      setArchived((a) => ({ ...a, error: `Désarchivage impossible : ${err.message}` }));
+      setArchived((a) => ({ ...a, error: { key: 'unarchiveFailed', err } }));
     }
   }
 
@@ -169,20 +196,20 @@ export default function HabitsPage() {
     <div className="habits-page">
       <div className="page-head">
         <div>
-          <h1>Mes habitudes</h1>
-          <p className="text-muted">Les 7 derniers jours. Touchez une case pour cocher ou décocher.</p>
+          <h1>{h.title}</h1>
+          <p className="text-muted">{h.lead}</p>
         </div>
         {!editing && (
-          <button type="button" className="btn btn--primary" onClick={() => setEditing({ habit: null })}>
-            + Nouvelle habitude
+          <button type="button" className="btn btn--primary" ref={addButton} onClick={() => openForm(null)}>
+            {h.add}
           </button>
         )}
       </div>
 
       {notice && (
         <p className="alert alert--info" role="status">
-          {notice}
-          <button type="button" className="alert__close" onClick={() => setNotice(null)} aria-label="Fermer le message">
+          {renderMessage(notice, t)}
+          <button type="button" className="alert__close" onClick={() => setNotice(null)} aria-label={h.closeNotice}>
             ×
           </button>
         </p>
@@ -199,25 +226,25 @@ export default function HabitsPage() {
 
       {status === 'loading' && (
         <p className="state" role="status">
-          Chargement des habitudes…
+          {h.loading}
         </p>
       )}
 
       {status === 'error' && (
         <div className="state state--error" role="alert">
-          <p>Impossible de charger les habitudes : {loadError}</p>
+          <p>{h.loadError(describeError(loadError, t))}</p>
           <button type="button" className="btn" onClick={load}>
-            Réessayer
+            {h.retry}
           </button>
         </div>
       )}
 
       {status === 'ready' && habits.length === 0 && (
         <div className="state">
-          <p>Aucune habitude active pour le moment.</p>
+          <p>{h.empty}</p>
           {!editing && (
-            <button type="button" className="btn btn--primary" onClick={() => setEditing({ habit: null })}>
-              Créer ma première habitude
+            <button type="button" className="btn btn--primary" onClick={() => openForm(null)}>
+              {h.createFirst}
             </button>
           )}
         </div>
@@ -225,7 +252,7 @@ export default function HabitsPage() {
 
       {status === 'ready' && habits.length > 0 && (
         <>
-          <ul className="habit-list" aria-label="Habitudes actives" data-highlight={highlight ?? undefined}>
+          <ul className="habit-list" aria-label={h.activeList} data-highlight={highlight ?? undefined}>
             {habits.map((habit) => (
               <HabitRow
                 key={habit.id}
@@ -234,13 +261,13 @@ export default function HabitsPage() {
                 isChecked={(date) => checked.has(cellKey(habit.id, date))}
                 isPending={(date) => pending.has(cellKey(habit.id, date))}
                 onToggle={(date, done) => toggle(habit, date, done)}
-                onEdit={() => setEditing({ habit })}
+                onEdit={() => openForm(habit)}
                 onArchive={() => handleArchive(habit)}
-                error={rowErrors[habit.id]}
+                error={rowErrors[habit.id] && renderMessage(rowErrors[habit.id], t)}
               />
             ))}
           </ul>
-          <div className="legend" role="group" aria-label="Mettre en évidence dans la grille">
+          <div className="legend" role="group" aria-label={h.legendGroup}>
             {LEGEND_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -252,14 +279,14 @@ export default function HabitsPage() {
                 <span className={`legend__swatch week-cell ${item.swatch}`} aria-hidden="true">
                   {item.id === 'done' ? '✓' : ''}
                 </span>
-                {item.label}
+                {h[item.labelKey]}
               </button>
             ))}
           </div>
         </>
       )}
 
-      <section className="archived" aria-label="Archives">
+      <section className="archived" aria-label={h.archives}>
         <button
           type="button"
           className="btn btn--ghost"
@@ -267,36 +294,36 @@ export default function HabitsPage() {
           aria-controls="archived-panel"
           onClick={() => setShowArchived((v) => !v)}
         >
-          {showArchived ? 'Masquer les archivées' : 'Voir les archivées'}
+          {showArchived ? h.hideArchived : h.showArchived}
         </button>
         {showArchived && (
           <div id="archived-panel">
-            <h2 id="archived-title">Habitudes archivées</h2>
-            {archived.status === 'loading' && <p className="state" role="status">Chargement…</p>}
+            <h2 id="archived-title">{h.archivedTitle}</h2>
+            {archived.status === 'loading' && <p className="state" role="status">{h.loadingShort}</p>}
             {archived.error && (
               <div className="state state--error" role="alert">
-                <p>{archived.error}</p>
+                <p>{renderMessage(archived.error, t)}</p>
                 <button type="button" className="btn" onClick={loadArchived}>
-                  Réessayer
+                  {h.retry}
                 </button>
               </div>
             )}
             {archived.status === 'ready' && archived.items.length === 0 && (
-              <p className="state">Aucune habitude archivée.</p>
+              <p className="state">{h.noArchived}</p>
             )}
             {archived.items.length > 0 && (
-              <ul className="archived-list" aria-label="Habitudes archivées">
-                {archived.items.map((h) => (
-                  <li key={h.id} className="card archived-item" data-testid={`archived-${h.id}`}>
-                    <span aria-hidden="true">{h.icon}</span>
-                    <span className="archived-item__name">{h.name}</span>
+              <ul className="archived-list" aria-label={h.archivedTitle}>
+                {archived.items.map((item) => (
+                  <li key={item.id} className="card archived-item" data-testid={`archived-${item.id}`}>
+                    <span aria-hidden="true">{item.icon}</span>
+                    <span className="archived-item__name">{item.name}</span>
                     <button
                       type="button"
                       className="btn btn--sm"
-                      onClick={() => handleUnarchive(h)}
-                      aria-label={`Désarchiver ${h.name}`}
+                      onClick={() => handleUnarchive(item)}
+                      aria-label={h.unarchiveNamed(item.name)}
                     >
-                      Désarchiver
+                      {h.unarchive}
                     </button>
                   </li>
                 ))}

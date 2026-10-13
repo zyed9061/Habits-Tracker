@@ -1,5 +1,16 @@
 // Client HTTP typé par API_CONTRACT.md. Chaque fonction renvoie le JSON du
 // serveur ou lève une Error portant le message serveur (`error.message`).
+// Les erreurs produites côté client portent un `code` ('unreachable' | 'http')
+// pour être traduites à l'affichage (voir describeError dans i18n).
+
+const UNREACHABLE = 'Serveur injoignable';
+
+function unreachable(status) {
+  const err = new Error(UNREACHABLE);
+  err.code = 'unreachable';
+  if (status) err.status = status;
+  return err;
+}
 
 async function request(path, { method = 'GET', body } = {}) {
   let res;
@@ -10,7 +21,7 @@ async function request(path, { method = 'GET', body } = {}) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error('Serveur injoignable');
+    throw unreachable();
   }
   let data = null;
   const text = await res.text();
@@ -22,7 +33,12 @@ async function request(path, { method = 'GET', body } = {}) {
     }
   }
   if (!res.ok) {
-    const err = new Error(data?.error?.message || `Erreur ${res.status}`);
+    // Le proxy Vite répond 500 sans corps JSON quand l'API est arrêtée : même
+    // message qu'une erreur réseau plutôt qu'un « Erreur 500 » opaque.
+    const serverMessage = data?.error?.message;
+    if (!serverMessage && res.status >= 500) throw unreachable(res.status);
+    const err = new Error(serverMessage || `Erreur ${res.status}`);
+    if (!serverMessage) err.code = 'http';
     err.status = res.status;
     throw err;
   }

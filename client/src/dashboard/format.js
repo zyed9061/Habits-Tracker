@@ -1,32 +1,29 @@
-import { WEEKDAY_LONG, WEEKDAY_SHORT, parseDateKey, toDateKey, weekdayIndex } from '../dates.js';
+import { parseDateKey, weekdayIndex } from '../dates.js';
+import { DEFAULT_LANG, MESSAGES } from '../i18n/messages.js';
 
-// Dates « YYYY-MM-DD » traitées en heure locale (jamais toISOString) : helpers partagés avec ../dates.js.
-export const WEEKDAYS_SHORT = WEEKDAY_SHORT;
-export const WEEKDAYS_LONG = WEEKDAY_LONG;
-export const parseDate = parseDateKey;
-export const toDateString = toDateKey;
-// 0 = lundi … 6 = dimanche
-export const mondayIndex = weekdayIndex;
+// Chaque formateur reçoit les textes `t` de la langue courante (défaut : langue par défaut).
+const DEFAULT_T = MESSAGES[DEFAULT_LANG];
 
-const MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-const MONTHS_LONG = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-
-// Taux 0..1 -> « 73 % » ; null/undefined -> « — ».
-export function formatRate(rate) {
+// Taux 0..1 -> « 73 % » / "73%" ; null/undefined -> « — ».
+export function formatRate(rate, t = DEFAULT_T) {
   if (rate === null || rate === undefined || Number.isNaN(rate)) return '—';
-  return `${Math.round(rate * 100)} %`;
+  return t.percent(Math.round(rate * 100));
 }
 
 export const toPercent = (rate) => (rate === null || rate === undefined ? null : Math.round(rate * 1000) / 10);
 
-export const monthShort = (i) => MONTHS_SHORT[i];
+export const monthShort = (i, t = DEFAULT_T) => t.monthsShort[i];
 
-export function formatShortDate(str) {
-  const d = parseDate(str);
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+// « YYYY-MM-DD » -> « 8 oct. » / "Oct 8"
+export function formatShortDate(str, t = DEFAULT_T) {
+  const d = parseDateKey(str);
+  return t.shortDate(d.getDate(), t.monthsShort[d.getMonth()]);
 }
 
-export function formatLongDate(str) {
-  const d = parseDate(str);
-  return `${WEEKDAYS_LONG[mondayIndex(d)]} ${d.getDate()} ${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+// « YYYY-MM-DD » -> « jeudi 8 octobre 2026 » / "Thursday, October 8, 2026"
+export function formatFullDate(str, t = DEFAULT_T) {
+  const d = parseDateKey(str);
+  return t.fullDate(t.weekdaysLong[weekdayIndex(d)], d.getDate(), t.monthsLong[d.getMonth()], d.getFullYear());
 }
+
+export const formatCount = (completed, scheduled) => `${completed}/${scheduled}`;

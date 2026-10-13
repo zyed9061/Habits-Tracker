@@ -10,6 +10,11 @@
       try {
         var t = localStorage.getItem('theme');
         if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+        // Idem pour la langue (src/i18n) : lang et titre corrects dès le chargement.
+        if (localStorage.getItem('lang') === 'en') {
+          document.documentElement.lang = 'en';
+          document.title = 'Habits';
+        }
       } catch (e) {}
     </script>
   </head>

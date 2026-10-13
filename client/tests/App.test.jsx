@@ -43,9 +43,9 @@ describe('<App /> routing and layout', () => {
     renderAt('/');
     expect(await screen.findByRole('heading', { level: 1, name: 'Mes habitudes' })).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Navigation principale' });
-    await userEvent.click(within(nav).getByRole('link', { name: 'Dashboard' }));
+    await userEvent.click(within(nav).getByRole('link', { name: 'Tableau de bord' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' }, { timeout: 5000 })).toBeInTheDocument();
-    expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveClass('active');
+    expect(within(nav).getByRole('link', { name: 'Tableau de bord' })).toHaveClass('active');
   });
 
   it('shows a not-found message on an unknown route', () => {

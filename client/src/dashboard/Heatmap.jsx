@@ -1,5 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { WEEKDAYS_SHORT, formatLongDate, formatRate, monthShort, mondayIndex, toDateString } from './format.js';
+import { toDateKey, weekdayIndex } from '../dates.js';
+import { useI18n } from '../i18n/I18nContext.jsx';
+import { formatFullDate, formatRate, monthShort } from './format.js';
 
 // Niveau d'intensité 0..4 selon le taux du jour ; 'none' = aucune habitude prévue ce jour-là.
 function levelOf(day) {
@@ -16,30 +18,31 @@ function levelOf(day) {
 function buildGrid(year, days) {
   const byDate = new Map(days.map((d) => [d.date, d]));
   const first = new Date(year, 0, 1);
-  const offset = mondayIndex(first);
+  const offset = weekdayIndex(first);
   const cells = [];
   const months = [];
   for (let d = new Date(first), i = 0; d.getFullYear() === year; d.setDate(d.getDate() + 1), i++) {
-    const date = toDateString(d);
+    const date = toDateKey(d);
     const col = Math.floor((offset + i) / 7);
     if (d.getDate() === 1) months.push({ month: d.getMonth(), col });
-    cells.push({ date, row: mondayIndex(d), col, day: byDate.get(date) ?? null });
+    cells.push({ date, row: weekdayIndex(d), col, day: byDate.get(date) ?? null });
   }
   const weeks = cells[cells.length - 1].col + 1;
   return { cells, months, weeks };
 }
 
-function cellLabel(cell) {
-  const date = formatLongDate(cell.date);
+function cellLabel(cell, t) {
+  const date = formatFullDate(cell.date, t);
   const d = cell.day;
-  if (!d) return `${date} : à venir`;
-  if (!d.scheduled) return `${date} : aucune habitude prévue`;
-  return `${date} : ${d.completed} sur ${d.scheduled} cochées, ${formatRate(d.rate)}`;
+  if (!d) return t.dashboard.cellFuture(date);
+  if (!d.scheduled) return t.dashboard.cellNone(date);
+  return t.dashboard.cellDone(date, d.completed, d.scheduled, formatRate(d.rate, t));
 }
 
 const KEY_STEPS = { ArrowUp: -1, ArrowDown: 1, ArrowLeft: -7, ArrowRight: 7 };
 
 export default function Heatmap({ year, days }) {
+  const { t } = useI18n();
   const { cells, months, weeks } = useMemo(() => buildGrid(year, days), [year, days]);
   // Dernier jour connu (aujourd'hui pour l'année en cours) : point d'entrée clavier.
   const lastIdx = useMemo(() => {
@@ -83,7 +86,7 @@ export default function Heatmap({ year, days }) {
 
   const totals = days.reduce((a, d) => ({ c: a.c + d.completed, s: a.s + d.scheduled }), { c: 0, s: 0 });
   const indexed = cells.map((c, i) => ({ ...c, i }));
-  const rows = WEEKDAYS_SHORT.map((_, r) => indexed.filter((c) => c.row === r));
+  const rows = t.weekdaysShort.map((_, r) => indexed.filter((c) => c.row === r));
 
   return (
     <div className="dv-heatmap" ref={wrapRef} onMouseLeave={() => setTip(null)}>
@@ -92,21 +95,24 @@ export default function Heatmap({ year, days }) {
           <div className="dv-heatmap__months" aria-hidden="true">
             {months.map((m) => (
               <span key={m.month} style={{ gridColumnStart: m.col + 1 }}>
-                {monthShort(m.month)}
+                {monthShort(m.month, t)}
               </span>
             ))}
           </div>
           <div className="dv-heatmap__weekdays" aria-hidden="true">
-            {WEEKDAYS_SHORT.map((w, i) => (
-              <span key={w}>{i % 2 === 0 ? w : ''}</span>
+            {t.weekdaysShort.map((w, i) => (
+              <span key={i}>{i % 2 === 0 ? w : ''}</span>
             ))}
           </div>
           <div
             className="dv-heatmap__grid"
             role="grid"
-            aria-label={`Calendrier ${year} : ${totals.c} complétions sur ${totals.s} prévues (${formatRate(
-              totals.s ? totals.c / totals.s : null,
-            )}). Flèches pour parcourir les jours.`}
+            aria-label={t.dashboard.heatmapAria(
+              year,
+              totals.c,
+              totals.s,
+              formatRate(totals.s ? totals.c / totals.s : null, t),
+            )}
             onKeyDown={onKeyDown}
             onBlur={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget)) setTip(null);
@@ -120,7 +126,7 @@ export default function Heatmap({ year, days }) {
                     ref={(el) => (cellRefs.current[cell.i] = el)}
                     role="gridcell"
                     tabIndex={cell.i === activeIdx ? 0 : -1}
-                    aria-label={cellLabel(cell)}
+                    aria-label={cellLabel(cell, t)}
                     aria-disabled={cell.day ? undefined : true}
                     className="dv-cell"
                     data-level={levelOf(cell.day)}
@@ -141,26 +147,26 @@ export default function Heatmap({ year, days }) {
 
       <div className="dv-heatmap__legend" aria-hidden="true">
         <span className="dv-legend-item">
-          <span className="dv-cell" data-level="none" /> Non prévu
+          <span className="dv-cell" data-level="none" /> {t.dashboard.legendUnscheduled}
         </span>
         <span className="dv-legend-scale">
-          Moins
+          {t.dashboard.legendLess}
           {[0, 1, 2, 3, 4].map((l) => (
             <span key={l} className="dv-cell" data-level={l} />
           ))}
-          Plus
+          {t.dashboard.legendMore}
         </span>
       </div>
 
       {tip && (
         <div className="dv-tooltip dv-heatmap__tip" style={{ left: tip.x, top: tip.y }} aria-hidden="true">
-          <strong>{formatLongDate(tip.cell.date)}</strong>
+          <strong>{formatFullDate(tip.cell.date, t)}</strong>
           {tip.cell.day.scheduled ? (
             <span>
-              {tip.cell.day.completed}/{tip.cell.day.scheduled} cochées · {formatRate(tip.cell.day.rate)}
+              {t.dashboard.checked(tip.cell.day.completed, tip.cell.day.scheduled)} · {formatRate(tip.cell.day.rate, t)}
             </span>
           ) : (
-            <span>Aucune habitude prévue{tip.cell.day.completed ? ` · ${tip.cell.day.completed} cochée(s)` : ''}</span>
+            <span>{t.dashboard.noneScheduled}</span>
           )}
         </div>
       )}

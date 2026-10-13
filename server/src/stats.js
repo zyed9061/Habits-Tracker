@@ -37,6 +37,18 @@ function countDay(habits, byHabit, date) {
   return { completed, scheduled };
 }
 
+/** Totals of countDay over a list of dates. */
+function countDays(habits, byHabit, dates) {
+  let completed = 0;
+  let scheduled = 0;
+  for (const date of dates) {
+    const day = countDay(habits, byHabit, date);
+    completed += day.completed;
+    scheduled += day.scheduled;
+  }
+  return { completed, scheduled };
+}
+
 /** Per-day aggregates over an inclusive date range. */
 function dayRows(habits, byHabit, from, to) {
   return dateRange(from, to).map((date) => {
@@ -104,14 +116,7 @@ export function ranking(habits, checkins, days, today) {
   const byHabit = indexCheckins(checkins);
   const range = dateRange(addDays(today, -(days - 1)), today);
   const rows = habits.map((h) => {
-    const checked = byHabit.get(h.id) ?? new Set();
-    let completed = 0;
-    let scheduled = 0;
-    for (const date of range) {
-      if (!isCounted(h, date)) continue;
-      scheduled++;
-      if (checked.has(date)) completed++;
-    }
+    const { completed, scheduled } = countDays([h], byHabit, range);
     return {
       habitId: h.id,
       name: h.name,

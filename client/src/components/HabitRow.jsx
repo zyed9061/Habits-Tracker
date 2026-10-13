@@ -1,4 +1,5 @@
-import { WEEKDAY_SHORT, formatLongDate } from '../dates.js';
+import { formatLongDate } from '../dates.js';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
 // Constantes WCAG : linéarisation sRGB, poids de luminance, seuil noir/blanc.
 const SRGB_LINEAR_THRESHOLD = 0.03928;
@@ -23,6 +24,7 @@ function contrastOn(hex) {
 
 // Une habitude : identité, séries (F3) et grille des 7 derniers jours (F2).
 export default function HabitRow({ habit, days, isChecked, isPending, onToggle, onEdit, onArchive, error }) {
+  const { t } = useI18n();
   return (
     <li className="habit-row card" data-testid={`habit-${habit.id}`} style={{ '--habit-color': habit.color, '--habit-on': contrastOn(habit.color) }}>
       <div className="habit-row__info">
@@ -32,37 +34,37 @@ export default function HabitRow({ habit, days, isChecked, isPending, onToggle, 
         <div className="habit-row__text">
           <h2 className="habit-row__name">{habit.name}</h2>
           <p className="habit-row__meta">
-            <span aria-label={`Série en cours : ${habit.currentStreak}`} data-testid="current-streak">
+            <span aria-label={t.row.currentStreak(habit.currentStreak)} data-testid="current-streak">
               🔥 {habit.currentStreak}
             </span>
-            <span aria-label={`Meilleure série : ${habit.bestStreak}`} data-testid="best-streak">
+            <span aria-label={t.row.bestStreak(habit.bestStreak)} data-testid="best-streak">
               🏆 {habit.bestStreak}
             </span>
-            <span className="habit-row__goal">Objectif {habit.weeklyGoal}/sem.</span>
+            <span className="habit-row__goal">{t.row.goal(habit.weeklyGoal)}</span>
           </p>
         </div>
         <div className="habit-row__actions">
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onEdit} aria-label={`Modifier ${habit.name}`}>
-            Modifier
+          <button type="button" className="btn btn--ghost btn--sm" onClick={onEdit} aria-label={t.row.editNamed(habit.name)}>
+            {t.row.edit}
           </button>
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onArchive} aria-label={`Archiver ${habit.name}`}>
-            Archiver
+          <button type="button" className="btn btn--ghost btn--sm" onClick={onArchive} aria-label={t.row.archiveNamed(habit.name)}>
+            {t.row.archive}
           </button>
         </div>
       </div>
 
-      <div className="week-grid" role="group" aria-label={`Semaine de ${habit.name}`}>
+      <div className="week-grid" role="group" aria-label={t.row.week(habit.name)}>
         {days.map((day) => {
           const scheduled = habit.frequency.days.includes(day.weekday);
           const checked = isChecked(day.key);
           const pending = isPending(day.key);
-          const label = `${habit.name}, ${formatLongDate(day.date)}${day.isToday ? " (aujourd'hui)" : ''}${
-            scheduled ? '' : ', non prévu'
+          const label = `${habit.name}, ${formatLongDate(day.date, t)}${day.isToday ? t.row.today : ''}${
+            scheduled ? '' : t.row.unscheduled
           }`;
           return (
             <div className="week-col" key={day.key}>
               <span className={`week-col__label${day.isToday ? ' is-today' : ''}`} aria-hidden="true">
-                {WEEKDAY_SHORT[day.weekday]}
+                {t.weekdaysShort[day.weekday]}
                 <small>{day.date.getDate()}</small>
               </span>
               <button
@@ -81,8 +83,11 @@ export default function HabitRow({ habit, days, isChecked, isPending, onToggle, 
                 title={label}
                 data-date={day.key}
                 data-scheduled={scheduled}
-                disabled={pending}
-                onClick={() => onToggle(day.key, !checked)}
+                // aria-disabled plutôt que disabled : le bouton garde le focus clavier pendant l'envoi.
+                aria-disabled={pending}
+                onClick={() => {
+                  if (!pending) onToggle(day.key, !checked);
+                }}
               >
                 {checked ? '✓' : ''}
               </button>

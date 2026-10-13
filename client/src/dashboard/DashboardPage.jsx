@@ -5,6 +5,7 @@ import Panel from './Panel.jsx';
 import Heatmap, { isHeatmapEmpty } from './Heatmap.jsx';
 import { DailyChart, RankingChart, WeekdayChart } from './Charts.jsx';
 import { DAILY_DAYS, RANKING_DAYS, WEEKDAY_WEEKS } from './constants.js';
+import { useI18n } from '../i18n/I18nContext.jsx';
 import { useDaily, useHeatmap, useRanking, useSummary, useWeekday } from './useStats.js';
 
 // Borne basse acceptée par GET /api/stats/heatmap (contrat § 8.3).
@@ -13,6 +14,8 @@ const MIN_YEAR = 1970;
 const noneScheduled = (rows) => !rows?.some((r) => r.scheduled > 0);
 
 export default function DashboardPage() {
+  const { t } = useI18n();
+  const d = t.dashboard;
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
 
@@ -25,8 +28,8 @@ export default function DashboardPage() {
   return (
     <div className="dv-page">
       <header className="dv-page__head">
-        <h1>Tableau de bord</h1>
-        <p className="dv-page__lead">Vos habitudes en chiffres.</p>
+        <h1>{d.title}</h1>
+        <p className="dv-page__lead">{d.lead}</p>
       </header>
 
       <KpiCards state={summary} />
@@ -35,14 +38,14 @@ export default function DashboardPage() {
         className="dv-panel--wide"
         title={
           <span className="dv-year">
-            Activité {year}
+            {d.activity(year)}
             <span className="dv-year__nav">
               <button
                 type="button"
                 className="dv-icon-btn"
                 onClick={() => setYear(year - 1)}
                 disabled={year <= MIN_YEAR}
-                aria-label="Année précédente"
+                aria-label={d.prevYear}
               >
                 ‹
               </button>
@@ -51,17 +54,17 @@ export default function DashboardPage() {
                 className="dv-icon-btn"
                 onClick={() => setYear(year + 1)}
                 disabled={year >= thisYear}
-                aria-label="Année suivante"
+                aria-label={d.nextYear}
               >
                 ›
               </button>
             </span>
           </span>
         }
-        subtitle="Part des habitudes prévues cochées, jour par jour"
+        subtitle={d.heatmapSubtitle}
         state={heatmap}
         isEmpty={isHeatmapEmpty}
-        emptyText={`Aucune habitude prévue en ${year}.`}
+        emptyText={d.noneInYear(year)}
         skeleton={<div className="dv-skeleton dv-skeleton--heatmap" aria-hidden="true" />}
       >
         {(data) => <Heatmap year={data.year} days={data.days} />}
@@ -69,26 +72,26 @@ export default function DashboardPage() {
 
       <div className="dv-grid-2">
         <Panel
-          title={`Complétion sur ${DAILY_DAYS} jours`}
-          subtitle="Taux quotidien, toutes habitudes"
+          title={d.dailyTitle(DAILY_DAYS)}
+          subtitle={d.dailySubtitle}
           state={daily}
           isEmpty={noneScheduled}
         >
-          {(data) => <DailyChart data={data} />}
+          {(data) => <DailyChart data={data} days={DAILY_DAYS} />}
         </Panel>
         <Panel
-          title="Par jour de la semaine"
-          subtitle={`Taux moyen sur les ${WEEKDAY_WEEKS} dernières semaines`}
+          title={d.weekdayTitle}
+          subtitle={d.weekdaySubtitle(WEEKDAY_WEEKS)}
           state={weekday}
           isEmpty={noneScheduled}
         >
-          {(data) => <WeekdayChart data={data} />}
+          {(data) => <WeekdayChart data={data} weeks={WEEKDAY_WEEKS} />}
         </Panel>
       </div>
 
       <Panel
-        title="Classement des habitudes"
-        subtitle={`Régularité sur ${RANKING_DAYS} jours · 🔥 série en cours`}
+        title={d.rankingTitle}
+        subtitle={d.rankingSubtitle(RANKING_DAYS)}
         state={ranking}
         isEmpty={(rows) => !rows?.length}
         skeleton={
@@ -99,7 +102,7 @@ export default function DashboardPage() {
           </div>
         }
       >
-        {(data) => <RankingChart data={data} />}
+        {(data) => <RankingChart data={data} days={RANKING_DAYS} />}
       </Panel>
     </div>
   );
