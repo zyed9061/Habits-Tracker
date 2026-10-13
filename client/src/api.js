@@ -40,6 +40,8 @@ async function request(path, { method = 'GET', body } = {}) {
     const err = new Error(serverMessage || `Erreur ${res.status}`);
     if (!serverMessage) err.code = 'http';
     err.status = res.status;
+    // Code stable optionnel du serveur (ex. ai_quota) : distingue des erreurs de même statut.
+    if (data?.error?.code) err.serverCode = data.error.code;
     throw err;
   }
   return data;
@@ -75,3 +77,7 @@ export const getStatsHeatmap = (year) => request(`/stats/heatmap${query({ year }
 export const getStatsDaily = (days = 30) => request(`/stats/daily${query({ days })}`);
 export const getStatsWeekday = (weeks = 12) => request(`/stats/weekday${query({ weeks })}`);
 export const getStatsRanking = (days = 30) => request(`/stats/ranking${query({ days })}`);
+
+// Assistant : `messages` = [{ role: 'user' | 'assistant', content }], le dernier venant de l'utilisateur.
+// Réponse { reply, refused } ; les chiffres sont recalculés par le serveur.
+export const sendChat = (messages, lang) => request('/chat', { method: 'POST', body: { messages, lang } });

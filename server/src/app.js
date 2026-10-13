@@ -1,5 +1,7 @@
 import express from 'express';
 import { isValidDate, todayStr } from './dates.js';
+import { buildHabitContext, buildModelMessages, finalizeReply, validateChatBody } from './chat.js';
+import { DEFAULT_MODEL, createChatCompletion } from './openai.js';
 import { createRepository } from './repository.js';
 import * as stats from './stats.js';
 import { computeStreaks } from './streaks.js';
@@ -12,15 +14,41 @@ import {
   validateNewHabit,
 } from './validation.js';
 
+// Taille maximale d'un corps JSON (voir /api/chat).
+const JSON_BODY_LIMIT = '300kb';
+// /api/chat : au plus `max` questions par client sur `windowMs` (fenêtre fixe, en mémoire).
+const CHAT_LIMIT = { max: 10, windowMs: 60_000 };
+
+// Limiteur en mémoire par clé (IP) : renvoie 0 si la requête passe, sinon le
+// nombre de secondes à attendre.
+function createRateLimiter({ max, windowMs }) {
+  const hits = new Map(); // clé -> { start, count }
+  return (key) => {
+    const now = Date.now();
+    const entry = hits.get(key);
+    if (!entry || now - entry.start >= windowMs) {
+      hits.set(key, { start: now, count: 1 });
+      return 0;
+    }
+    if (entry.count >= max) return Math.ceil((entry.start + windowMs - now) / 1000);
+    entry.count++;
+    return 0;
+  };
+}
+
 /**
  * Builds the Express app without listening.
  * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ today?: () => string }} [options] `today` overrides the local date (tests).
+ * @param {{ today?: () => string, openai?: { apiKey?: string, model?: string, fetch?: typeof fetch, timeoutMs?: number }, chatLimit?: { max: number, windowMs: number } }} [options]
+ *   `today` overrides the local date (tests). `openai` overrides the assistant
+ *   settings, read from process.env (OPENAI_API_KEY, OPENAI_MODEL) by default.
  */
-export function createApp(db, { today = todayStr } = {}) {
+export function createApp(db, { today = todayStr, openai = {}, chatLimit = CHAT_LIMIT } = {}) {
   const repo = createRepository(db);
   const app = express();
-  app.use(express.json());
+  // Un historique conforme au contrat (50 messages ≤ 4000 car.) dépasse les 100 kB par défaut.
+  app.use(express.json({ limit: JSON_BODY_LIMIT }));
+  const chatLimiter = createRateLimiter(chatLimit);
 
   const withStreaks = (habit, dates) => ({ ...habit, ...computeStreaks(habit.frequency, dates, today()) });
 
@@ -141,6 +169,39 @@ export function createApp(db, { today = todayStr } = {}) {
     res.json(stats.ranking(habits, checkins, days, today()));
   });
 
+  // --- Assistant (chat) --------------------------------------------------------
+
+  app.post('/api/chat', async (req, res) => {
+    const { messages, lang } = validateChatBody(req.body);
+    // Read at request time: the key is never stored elsewhere nor sent to the client.
+    const apiKey = openai.apiKey ?? process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new HttpError(503, 'Assistant indisponible : OPENAI_API_KEY non configurée sur le serveur', {
+        code: 'ai_not_configured',
+      });
+    }
+    // Chaque appel est payant : nombre de requêtes limité par client (après validation,
+    // pour qu'une requête invalide ne consomme pas le quota).
+    const retryAfter = chatLimiter(req.ip);
+    if (retryAfter) {
+      throw new HttpError(429, "Trop de questions à l'assistant, réessayez dans un instant", {
+        code: 'chat_rate_limited',
+        retryAfter,
+      });
+    }
+    // Figures come from the database only, never from the client.
+    const { habits, checkins } = active();
+    const context = buildHabitContext(habits, checkins, today());
+    const raw = await createChatCompletion({
+      apiKey,
+      model: openai.model ?? (process.env.OPENAI_MODEL || DEFAULT_MODEL),
+      messages: buildModelMessages(lang, context, messages),
+      timeoutMs: openai.timeoutMs,
+      fetchImpl: openai.fetch,
+    });
+    res.json(finalizeReply(raw, lang));
+  });
+
   // --- Errors ------------------------------------------------------------------
 
   app.use('/api', (req, res) => {
@@ -150,10 +211,14 @@ export function createApp(db, { today = todayStr } = {}) {
   // Express recognises an error handler by its 4 arguments: `next` must stay declared.
   app.use((err, req, res, next) => {
     if (err instanceof HttpError) {
-      return res.status(err.status).json({ error: { message: err.message } });
+      if (err.retryAfter) res.set('Retry-After', String(err.retryAfter));
+      return res.status(err.status).json({ error: { message: err.message, ...(err.code && { code: err.code }) } });
     }
     if (err?.type === 'entity.parse.failed') {
       return res.status(400).json({ error: { message: 'Corps JSON invalide' } });
+    }
+    if (err?.type === 'entity.too.large') {
+      return res.status(413).json({ error: { message: 'Corps de la requête trop volumineux' } });
     }
     if (err?.status >= 400 && err?.status < 500) {
       return res.status(err.status).json({ error: { message: err.message } });
