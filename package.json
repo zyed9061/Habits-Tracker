@@ -1,0 +1,16 @@
+{
+  "name": "habit-tracker",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Suivi d'habitudes : API Express + SQLite, client React + Vite + Recharts",
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n server,client -c blue,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "seed": "npm --prefix server run seed",
+    "test": "npm --prefix server test && npm --prefix client test",
+    "build": "npm --prefix client run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

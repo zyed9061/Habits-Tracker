@@ -1,0 +1,11 @@
+node_modules/
+client/dist/
+.playwright-mcp/
+server/data/*.db
+server/data/*.db-*
+server/data/*.sqlite*
+.env
+.env.*
+!.env.example
+*.log
+.vite/

@@ -1,0 +1,40 @@
+/* Variables partagées (contrat section 6). Clair par défaut, sombre via
+   [data-theme="dark"] ou la préférence système quand aucun choix n'est mémorisé. */
+:root {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --text: #1a1d29;
+  --text-muted: #5f6577;
+  --border: #dfe2ea;
+  --accent: #4f46e5;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --radius: 10px;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #0f1117;
+  --surface: #191c25;
+  --text: #e8eaf1;
+  --text-muted: #9aa0b2;
+  --border: #2c303d;
+  --accent: #818cf8;
+  --success: #4ade80;
+  --danger: #f87171;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1117;
+    --surface: #191c25;
+    --text: #e8eaf1;
+    --text-muted: #9aa0b2;
+    --border: #2c303d;
+    --accent: #818cf8;
+    --success: #4ade80;
+    --danger: #f87171;
+    color-scheme: dark;
+  }
+}

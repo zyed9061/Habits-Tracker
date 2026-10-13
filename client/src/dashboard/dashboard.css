@@ -1,0 +1,504 @@
+/* Dashboard (dataviz) — couleurs uniquement via les variables du thème (client/src/styles/theme.css). */
+
+.dv-page {
+  --dv-gap: 16px;
+  --dv-radius: var(--radius, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dv-gap);
+  /* Largeur et marges fournies par le <main> de l'application (frontend). */
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color: var(--text);
+}
+
+.dv-page *,
+.dv-page *::before,
+.dv-page *::after {
+  box-sizing: border-box;
+}
+
+.dv-page__head h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.dv-page__lead {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+}
+
+/* ---------- KPI ---------- */
+.dv-kpis {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dv-gap);
+}
+
+@media (min-width: 600px) {
+  .dv-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .dv-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dv-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--dv-radius);
+  padding: 16px;
+  min-width: 0;
+}
+
+.dv-kpi p {
+  margin: 0;
+}
+
+.dv-kpi__label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.dv-kpi__value {
+  margin-top: 6px !important;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.dv-kpi__detail {
+  margin-top: 4px !important;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dv-note {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.dv-note a {
+  color: var(--accent);
+}
+
+/* ---------- Panels ---------- */
+.dv-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--dv-gap);
+}
+
+@media (min-width: 900px) {
+  .dv-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dv-panel {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--dv-radius);
+  padding: 16px;
+  min-width: 0;
+}
+
+.dv-panel__head {
+  margin-bottom: 12px;
+}
+
+.dv-panel__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.dv-panel__subtitle {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.dv-year {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dv-year__nav {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.dv-icon-btn,
+.dv-btn {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dv-icon-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.dv-btn {
+  padding: 8px 14px;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dv-icon-btn:hover:not(:disabled),
+.dv-btn:hover {
+  background: var(--bg);
+}
+
+.dv-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dv-icon-btn:focus-visible,
+.dv-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- États ---------- */
+.dv-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.dv-state p {
+  margin: 0;
+}
+
+.dv-state--error > p:first-child {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.dv-state__detail {
+  font-size: 0.875rem;
+}
+
+.dv-skeleton {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--border) 0%,
+    color-mix(in srgb, var(--border) 45%, var(--surface)) 50%,
+    var(--border) 100%
+  );
+  background-size: 200% 100%;
+  animation: dv-shimmer 1.4s ease-in-out infinite;
+}
+
+.dv-skeleton--line {
+  height: 12px;
+}
+
+.dv-skeleton--value {
+  height: 32px;
+  width: 50%;
+  margin: 10px 0;
+}
+
+.dv-skeleton--chart {
+  height: 240px;
+}
+
+.dv-skeleton--heatmap {
+  height: 130px;
+}
+
+.dv-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dv-skeleton--bar {
+  height: 24px;
+}
+
+.dv-skeleton--bar:nth-child(2) { width: 85%; }
+.dv-skeleton--bar:nth-child(3) { width: 65%; }
+.dv-skeleton--bar:nth-child(4) { width: 45%; }
+
+@keyframes dv-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dv-skeleton {
+    animation: none;
+  }
+}
+
+/* ---------- Tooltip ---------- */
+.dv-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.dv-tooltip span {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dv-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.dv-chart .recharts-surface:focus,
+.dv-chart .recharts-wrapper:focus {
+  outline: none;
+}
+
+/* ---------- Heatmap ---------- */
+.dv-heatmap {
+  --cell: 12px;
+  --cell-gap: 3px;
+  position: relative;
+}
+
+.dv-heatmap__scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+
+.dv-heatmap__inner {
+  display: grid;
+  grid-template-columns: auto max-content;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  row-gap: 4px;
+  width: max-content;
+}
+
+.dv-heatmap__months,
+.dv-heatmap__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks), var(--cell));
+  column-gap: var(--cell-gap);
+}
+
+.dv-heatmap__months {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.dv-heatmap__months span {
+  white-space: nowrap;
+}
+
+.dv-heatmap__weekdays {
+  grid-column: 1;
+  grid-row: 2;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding-right: 4px;
+  background: var(--surface);
+  display: grid;
+  grid-template-rows: repeat(7, var(--cell));
+  row-gap: var(--cell-gap);
+  font-size: 10px;
+  line-height: var(--cell);
+  color: var(--text-muted);
+}
+
+.dv-heatmap__grid {
+  grid-column: 2;
+  grid-row: 2;
+  grid-template-rows: repeat(7, var(--cell));
+  row-gap: var(--cell-gap);
+}
+
+/* Échelle séquentielle à une teinte (accent), mélangée à la surface : lisible en clair comme en sombre. */
+.dv-cell {
+  display: inline-block;
+  width: var(--cell, 12px);
+  height: var(--cell, 12px);
+  border-radius: 3px;
+}
+
+.dv-cell[data-level='none'] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.dv-cell[data-level='0'] {
+  background: var(--border);
+}
+
+.dv-cell[data-level='1'] {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface));
+}
+
+.dv-cell[data-level='2'] {
+  background: color-mix(in srgb, var(--accent) 55%, var(--surface));
+}
+
+.dv-cell[data-level='3'] {
+  background: color-mix(in srgb, var(--accent) 78%, var(--surface));
+}
+
+.dv-cell[data-level='4'] {
+  background: var(--accent);
+}
+
+.dv-cell[data-level='future'] {
+  visibility: hidden;
+}
+
+/* Les rangées ARIA n'existent que pour l'accessibilité : les cellules restent placées dans la grille CSS. */
+.dv-heatmap__row {
+  display: contents;
+}
+
+.dv-heatmap__grid .dv-cell:not([data-level='future']):hover,
+.dv-heatmap__grid .dv-cell:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.dv-heatmap__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dv-legend-item,
+.dv-legend-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dv-legend-scale {
+  margin-left: auto;
+}
+
+.dv-heatmap__tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 8px));
+  z-index: 2;
+}
+
+@media (min-width: 900px) {
+  .dv-heatmap {
+    --cell: 13px;
+  }
+}
+
+/* ---------- Tableau de données (alternative textuelle) ---------- */
+.dv-table {
+  margin-top: 8px;
+  font-size: 0.8125rem;
+}
+
+.dv-table summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+}
+
+.dv-table summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dv-table__scroll {
+  max-height: 260px;
+  margin-top: 8px;
+  overflow: auto;
+}
+
+.dv-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.dv-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dv-table th,
+.dv-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.dv-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dv-table tbody th {
+  font-weight: 400;
+}
