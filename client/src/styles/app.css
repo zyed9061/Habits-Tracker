@@ -108,6 +108,11 @@ select {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
+.app-header__controls {
+  display: flex;
+  gap: 8px;
+}
+
 .theme-toggle select {
   padding: 6px 8px;
   border: 1px solid var(--border);
@@ -365,11 +370,11 @@ select {
   transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
 }
 
-.week-cell:hover:not(:disabled) {
+.week-cell:hover:not([aria-disabled="true"]) {
   border-color: var(--habit-color, var(--accent));
 }
 
-.week-cell:active:not(:disabled) {
+.week-cell:active:not([aria-disabled="true"]) {
   transform: scale(0.94);
 }
 

@@ -27,9 +27,7 @@ export function lastSevenDays(today = new Date()) {
   return days;
 }
 
-export const WEEKDAY_SHORT = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-export const WEEKDAY_LONG = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-
-export function formatLongDate(d) {
-  return `${WEEKDAY_LONG[weekdayIndex(d)]} ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+// « jeudi 8/10 » / "Thursday 10/8" selon les textes `t` de la langue courante.
+export function formatLongDate(d, t) {
+  return t.dayMonth(t.weekdaysLong[weekdayIndex(d)], d.getDate(), d.getMonth());
 }

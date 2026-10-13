@@ -32,6 +32,12 @@ describe('validateHabit (mirrors contract §3)', () => {
     expect(validateHabit({ ...valid, name: `  ${'x'.repeat(60)}  ` })).toEqual({});
   });
 
+  it('counts the name length in code points, like the server (31 emoji = 62 UTF-16 units)', () => {
+    expect(validateHabit({ ...valid, name: '🏃'.repeat(31) })).toEqual({});
+    expect(validateHabit({ ...valid, name: '🏃'.repeat(60) })).toEqual({});
+    expect(validateHabit({ ...valid, name: '🏃'.repeat(61) })).toHaveProperty('name');
+  });
+
   // QA-F2 (fixed): icon length counted in code points, like the server.
   it('[QA-F2] accepts an emoji the server accepts (ZWJ family = 7 code points)', () => {
     expect(validateHabit({ ...valid, icon: '👨‍👩‍👧‍👦' })).toEqual({});

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useI18n } from '../i18n/I18nContext.jsx';
 
 const STORAGE_KEY = 'theme';
 
@@ -13,6 +14,7 @@ function readStored() {
 
 // Choix « système » = pas d'attribut data-theme, theme.css suit prefers-color-scheme.
 export default function ThemeToggle() {
+  const { t } = useI18n();
   const [theme, setTheme] = useState(readStored);
 
   useEffect(() => {
@@ -29,11 +31,11 @@ export default function ThemeToggle() {
 
   return (
     <label className="theme-toggle">
-      <span className="visually-hidden">Thème</span>
-      <select aria-label="Thème" value={theme} onChange={(e) => setTheme(e.target.value)}>
-        <option value="system">◐ Système</option>
-        <option value="light">☀ Clair</option>
-        <option value="dark">☾ Sombre</option>
+      <span className="visually-hidden">{t.theme.label}</span>
+      <select aria-label={t.theme.label} value={theme} onChange={(e) => setTheme(e.target.value)}>
+        <option value="system">{t.theme.system}</option>
+        <option value="light">{t.theme.light}</option>
+        <option value="dark">{t.theme.dark}</option>
       </select>
     </label>
   );

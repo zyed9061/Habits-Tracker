@@ -1,5 +1,6 @@
 import { Link, useInRouterContext } from 'react-router-dom';
 import { formatRate } from './format.js';
+import { describeError, useI18n } from '../i18n/I18nContext.jsx';
 
 // <Link> dans l'application (pas de rechargement) ; <a> hors routeur (tests, rendu isolé).
 function HomeLink({ children }) {
@@ -17,6 +18,8 @@ function Kpi({ label, value, detail }) {
 }
 
 export default function KpiCards({ state }) {
+  const { t } = useI18n();
+  const d = t.dashboard;
   const { data, loading, error, reload } = state;
 
   if (loading && !data) {
@@ -36,10 +39,10 @@ export default function KpiCards({ state }) {
   if (error) {
     return (
       <div className="dv-panel dv-state dv-state--error" role="alert">
-        <p>Impossible de charger les indicateurs.</p>
-        <p className="dv-state__detail">{error.message}</p>
+        <p>{d.kpiLoadError}</p>
+        <p className="dv-state__detail">{describeError(error, t)}</p>
         <button type="button" className="dv-btn" onClick={reload}>
-          Réessayer
+          {d.retry}
         </button>
       </div>
     );
@@ -50,22 +53,24 @@ export default function KpiCards({ state }) {
   return (
     <>
       <div className="dv-kpis">
-        <Kpi label="Habitudes actives" value={s.activeHabits} />
+        <Kpi label={d.kpiActive} value={s.activeHabits} />
         <Kpi
-          label="Complétion du jour"
-          value={formatRate(s.todayRate)}
-          detail={s.todayScheduled > 0 ? `${s.todayCompleted}/${s.todayScheduled} cochées` : 'Rien de prévu aujourd’hui'}
+          label={d.kpiToday}
+          value={formatRate(s.todayRate, t)}
+          detail={s.todayScheduled > 0 ? d.kpiChecked(s.todayCompleted, s.todayScheduled) : d.kpiNothingToday}
         />
         <Kpi
-          label="Meilleure série"
-          value={best ? `${best.value} j` : '—'}
-          detail={best && best.value > 0 ? best.habitName : 'Aucune série pour l’instant'}
+          label={d.kpiBestStreak}
+          value={best ? d.days(best.value) : '—'}
+          detail={best && best.value > 0 ? best.habitName : d.kpiNoStreak}
         />
-        <Kpi label="Taux sur 30 jours" value={formatRate(s.rate30d)} detail="Toutes habitudes confondues" />
+        <Kpi label={d.kpiRate30} value={formatRate(s.rate30d, t)} detail={d.kpiAllHabits} />
       </div>
       {s.activeHabits === 0 && (
         <p className="dv-note">
-          Aucune habitude active. <HomeLink>Créez votre première habitude</HomeLink> pour voir vos statistiques.
+          {d.noActiveBefore}
+          <HomeLink>{d.noActiveLink}</HomeLink>
+          {d.noActiveAfter}
         </p>
       )}
     </>

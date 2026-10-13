@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { WEEKDAY_LONG, WEEKDAY_SHORT } from '../dates.js';
+import { describeError, useI18n } from '../i18n/I18nContext.jsx';
+import { DEFAULT_LANG, MESSAGES } from '../i18n/messages.js';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const PRESET_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6', '#64748B'];
 const PRESET_ICONS = ['📚', '🏃', '💧', '🧘', '🥗', '💤', '✍️', '🎸'];
-const NAME_MAX = 60;
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+// Longueur maximale du nom (contrat section 3), en points de code.
+const NAME_MAX_LENGTH = 60;
+// L'attribut HTML maxLength compte en unités UTF-16 (un emoji en vaut souvent 2) :
+// le double de NAME_MAX_LENGTH laisse passer 60 emoji ; au-delà, le message
+// d'erreur s'affiche au lieu d'une saisie bloquée sans explication.
+const NAME_INPUT_MAX_LENGTH = NAME_MAX_LENGTH * 2;
 
 function initialState(habit) {
   if (!habit) {
@@ -22,31 +28,39 @@ function initialState(habit) {
 }
 
 // Mêmes règles que le contrat (section 3) pour éviter un aller-retour 400.
-export function validateHabit(values) {
+// `t` : textes de la langue courante (messages d'erreur).
+export function validateHabit(values, t = MESSAGES[DEFAULT_LANG]) {
+  const msg = t.form.errors;
   const errors = {};
-  const name = values.name.trim();
-  if (name.length < 1) errors.name = 'Le nom est obligatoire.';
-  else if (name.length > NAME_MAX) errors.name = `${NAME_MAX} caractères maximum.`;
-  if (!HEX_RE.test(values.color)) errors.color = 'Couleur au format #RRGGBB.';
+  // Nom et icône comptés en points de code, comme le serveur.
+  const nameLength = [...values.name.trim()].length;
+  if (nameLength < 1) errors.name = msg.nameRequired;
+  else if (nameLength > NAME_MAX_LENGTH) errors.name = msg.nameTooLong(NAME_MAX_LENGTH);
+  if (!HEX_RE.test(values.color)) errors.color = msg.color;
   const icon = values.icon.trim();
   // Compte en points de code, comme le serveur (un emoji composé reste valide).
   const iconLength = [...icon].length;
-  if (iconLength < 1 || iconLength > 8) errors.icon = 'Choisissez un emoji.';
+  if (iconLength < 1 || iconLength > 8) errors.icon = msg.icon;
   const days = values.type === 'daily' ? ALL_DAYS : values.days;
-  if (days.length === 0) errors.days = 'Choisissez au moins un jour.';
+  if (days.length === 0) errors.days = msg.days;
   const goal = Number(values.weeklyGoal);
-  if (!Number.isInteger(goal) || goal < 1 || goal > 7) errors.weeklyGoal = 'Objectif entre 1 et 7.';
+  if (!Number.isInteger(goal) || goal < 1 || goal > 7) errors.weeklyGoal = msg.goalRange;
   else if (days.length > 0 && goal > days.length)
-    errors.weeklyGoal = `Objectif au plus égal au nombre de jours prévus (${days.length}).`;
+    errors.weeklyGoal = msg.goalTooHigh(days.length);
   return errors;
 }
 
 export default function HabitForm({ habit, onSubmit, onCancel }) {
+  const { t } = useI18n();
+  const f = t.form;
   const [values, setValues] = useState(() => initialState(habit));
-  const [errors, setErrors] = useState({});
+  // Valeurs validées à la dernière soumission : les messages sont recalculés au
+  // rendu pour suivre un changement de langue.
+  const [validated, setValidated] = useState(null);
   const [submitError, setSubmitError] = useState(null);
   const [saving, setSaving] = useState(false);
   const isEdit = Boolean(habit);
+  const errors = validated ? validateHabit(validated, t) : {};
 
   const scheduledCount = values.type === 'daily' ? 7 : values.days.length;
 
@@ -75,8 +89,8 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const errs = validateHabit(values);
-    setErrors(errs);
+    const errs = validateHabit(values, t);
+    setValidated(values);
     setSubmitError(null);
     if (Object.keys(errs).length > 0) return;
     const days = values.type === 'daily' ? ALL_DAYS : values.days;
@@ -91,22 +105,22 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
     try {
       await onSubmit(payload);
     } catch (err) {
-      setSubmitError(err.message);
+      setSubmitError(err);
       setSaving(false);
     }
   }
 
   return (
-    <form className="card habit-form" onSubmit={handleSubmit} aria-label={isEdit ? "Modifier l'habitude" : 'Nouvelle habitude'} noValidate>
-      <h2 className="habit-form__title">{isEdit ? "Modifier l'habitude" : 'Nouvelle habitude'}</h2>
+    <form className="card habit-form" onSubmit={handleSubmit} aria-label={isEdit ? f.editTitle : f.newTitle} noValidate>
+      <h2 className="habit-form__title">{isEdit ? f.editTitle : f.newTitle}</h2>
 
       <div className="field">
-        <label htmlFor="habit-name">Nom</label>
+        <label htmlFor="habit-name">{f.name}</label>
         <input
           id="habit-name"
           type="text"
           value={values.name}
-          maxLength={80}
+          maxLength={NAME_INPUT_MAX_LENGTH}
           onChange={(e) => set('name', e.target.value)}
           aria-invalid={Boolean(errors.name)}
           aria-describedby={errors.name ? 'habit-name-error' : undefined}
@@ -117,7 +131,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
 
       <div className="field-row">
         <div className="field">
-          <label htmlFor="habit-icon">Icône</label>
+          <label htmlFor="habit-icon">{f.icon}</label>
           <input
             id="habit-icon"
             className="habit-form__icon-input"
@@ -127,14 +141,14 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
             aria-invalid={Boolean(errors.icon)}
             aria-describedby={errors.icon ? 'habit-icon-error' : undefined}
           />
-          <div className="swatches" role="group" aria-label="Icônes suggérées">
+          <div className="swatches" role="group" aria-label={f.iconSuggestions}>
             {PRESET_ICONS.map((ic) => (
               <button
                 key={ic}
                 type="button"
                 className={`swatch swatch--icon${values.icon === ic ? ' is-selected' : ''}`}
                 onClick={() => set('icon', ic)}
-                aria-label={`Icône ${ic}`}
+                aria-label={f.iconNamed(ic)}
                 aria-pressed={values.icon === ic}
               >
                 {ic}
@@ -145,7 +159,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
         </div>
 
         <div className="field">
-          <label htmlFor="habit-color">Couleur</label>
+          <label htmlFor="habit-color">{f.color}</label>
           <input
             id="habit-color"
             type="color"
@@ -154,7 +168,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
             aria-invalid={Boolean(errors.color)}
             aria-describedby={errors.color ? 'habit-color-error' : undefined}
           />
-          <div className="swatches" role="group" aria-label="Couleurs suggérées">
+          <div className="swatches" role="group" aria-label={f.colorSuggestions}>
             {PRESET_COLORS.map((c) => (
               <button
                 key={c}
@@ -162,7 +176,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
                 className={`swatch${values.color.toUpperCase() === c ? ' is-selected' : ''}`}
                 style={{ background: c }}
                 onClick={() => set('color', c)}
-                aria-label={`Couleur ${c}`}
+                aria-label={f.colorNamed(c)}
                 aria-pressed={values.color.toUpperCase() === c}
               />
             ))}
@@ -172,11 +186,11 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
       </div>
 
       <fieldset className="field">
-        <legend>Fréquence</legend>
+        <legend>{f.frequency}</legend>
         <div className="segmented">
           <label>
             <input type="radio" name="frequency" value="daily" checked={values.type === 'daily'} onChange={() => setType('daily')} />
-            Tous les jours
+            {f.daily}
           </label>
           <label>
             <input
@@ -186,24 +200,24 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
               checked={values.type === 'weekdays'}
               onChange={() => setType('weekdays')}
             />
-            Jours précis
+            {f.weekdays}
           </label>
         </div>
         {values.type === 'weekdays' && (
           <div
             className="day-picker"
             role="group"
-            aria-label="Jours prévus"
+            aria-label={f.scheduledDays}
             aria-describedby={errors.days ? 'habit-days-error' : undefined}
           >
-            {WEEKDAY_SHORT.map((label, i) => (
+            {t.weekdaysShort.map((label, i) => (
               <button
                 key={i}
                 type="button"
                 className={`day-picker__day${values.days.includes(i) ? ' is-selected' : ''}`}
                 onClick={() => toggleDay(i)}
                 aria-pressed={values.days.includes(i)}
-                aria-label={WEEKDAY_LONG[i]}
+                aria-label={t.weekdaysLong[i]}
               >
                 {label}
               </button>
@@ -214,7 +228,7 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
       </fieldset>
 
       <div className="field">
-        <label htmlFor="habit-goal">Objectif hebdomadaire (jours)</label>
+        <label htmlFor="habit-goal">{f.weeklyGoal}</label>
         <input
           id="habit-goal"
           type="number"
@@ -230,16 +244,16 @@ export default function HabitForm({ habit, onSubmit, onCancel }) {
 
       {submitError && (
         <p className="alert alert--error" role="alert">
-          {submitError}
+          {describeError(submitError, t)}
         </p>
       )}
 
       <div className="actions">
         <button type="button" className="btn" onClick={onCancel} disabled={saving}>
-          Annuler
+          {f.cancel}
         </button>
         <button type="submit" className="btn btn--primary" disabled={saving}>
-          {saving ? 'Enregistrement…' : isEdit ? 'Enregistrer' : 'Créer'}
+          {saving ? f.saving : isEdit ? f.save : f.create}
         </button>
       </div>
     </form>

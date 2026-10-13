@@ -2,7 +2,8 @@
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { addDays, dateRange, todayStr, weekdayOf } from './dates.js';
-import { DEFAULT_DB_PATH, initSchema, openDb } from './db.js';
+import { DEFAULT_DB_PATH, openDb } from './db.js';
+import { createRepository } from './repository.js';
 
 const HISTORY_DAYS = 120;
 
@@ -27,13 +28,8 @@ function prng(seed) {
 
 export function seed(db, today = todayStr()) {
   db.exec('DROP TABLE IF EXISTS checkins; DROP TABLE IF EXISTS habits;');
-  initSchema(db);
+  const repo = createRepository(db); // recreates the schema
   const random = prng(20261008);
-
-  const insertHabit = db.prepare(`
-    INSERT INTO habits (name, color, icon, frequency_type, frequency_days, weekly_goal, archived, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-  const insertCheckin = db.prepare('INSERT OR IGNORE INTO checkins (habit_id, date) VALUES (?, ?)');
 
   let total = 0;
   db.exec('BEGIN');
@@ -41,10 +37,11 @@ export function seed(db, today = todayStr()) {
     for (const h of HABITS) {
       const days = h.type === 'daily' ? [0, 1, 2, 3, 4, 5, 6] : h.days;
       const createdAt = addDays(today, -h.ageDays);
-      const { lastInsertRowid } = insertHabit.run(
-        h.name, h.color, h.icon, h.type, JSON.stringify(days), h.weeklyGoal, h.archived ? 1 : 0, createdAt,
+      const { id } = repo.createHabit(
+        { name: h.name, color: h.color, icon: h.icon, frequency: { type: h.type, days }, weeklyGoal: h.weeklyGoal },
+        createdAt,
       );
-      const id = Number(lastInsertRowid);
+      if (h.archived) repo.setArchived(id, true);
 
       // Markov-ish: success makes the next success likelier; weekends are harder
       // for daily habits; a slow upward trend over the period.
@@ -64,7 +61,7 @@ export function seed(db, today = todayStr()) {
         if (date === today) p = scheduled ? (h.base > 0.8 ? 1 : 0) : 0;
         const done = random() < Math.max(0, Math.min(1, p));
         if (done) {
-          insertCheckin.run(id, date);
+          repo.addCheckin(id, date);
           total++;
         }
         if (scheduled) last = done;
