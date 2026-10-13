@@ -1,7 +1,11 @@
 export class HttpError extends Error {
-  constructor(status, message) {
+  // `code` (optionnel) : identifiant stable renvoyé au client (error.code) pour
+  // distinguer des erreurs de même statut ; `retryAfter` : secondes (en-tête Retry-After).
+  constructor(status, message, { code, retryAfter } = {}) {
     super(message);
     this.status = status;
+    if (code) this.code = code;
+    if (retryAfter) this.retryAfter = retryAfter;
   }
 }
 

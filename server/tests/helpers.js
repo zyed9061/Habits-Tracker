@@ -5,11 +5,11 @@ import { createApp } from '../src/app.js';
 // 2026-10-08 is a Thursday (weekday 3 with 0 = Monday).
 export const TODAY = '2026-10-08';
 
-/** App on an in-memory database with a controllable clock. */
-export function makeApp(today = TODAY) {
+/** App on an in-memory database with a controllable clock (`options` go to createApp, e.g. `openai`). */
+export function makeApp(today = TODAY, options = {}) {
   const clock = { today };
   const db = new DatabaseSync(':memory:');
-  const app = createApp(db, { today: () => clock.today });
+  const app = createApp(db, { ...options, today: () => clock.today });
   return { app, db, clock, api: request(app) };
 }
 

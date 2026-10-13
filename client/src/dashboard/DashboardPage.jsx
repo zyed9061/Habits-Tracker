@@ -4,6 +4,7 @@ import KpiCards from './KpiCards.jsx';
 import Panel from './Panel.jsx';
 import Heatmap, { isHeatmapEmpty } from './Heatmap.jsx';
 import { DailyChart, RankingChart, WeekdayChart } from './Charts.jsx';
+import ChatPanel from './ChatPanel.jsx';
 import { DAILY_DAYS, RANKING_DAYS, WEEKDAY_WEEKS } from './constants.js';
 import { useI18n } from '../i18n/I18nContext.jsx';
 import { useDaily, useHeatmap, useRanking, useSummary, useWeekday } from './useStats.js';
@@ -104,6 +105,8 @@ export default function DashboardPage() {
       >
         {(data) => <RankingChart data={data} days={RANKING_DAYS} />}
       </Panel>
+
+      <ChatPanel />
     </div>
   );
 }

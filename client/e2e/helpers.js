@@ -1,6 +1,6 @@
 import { test as base, expect } from '@playwright/test';
 
-export const API = 'http://localhost:3001/api';
+export const API = 'http://127.0.0.1:3001/api';
 export const PREFIX = 'QA-e2e';
 
 // Local YYYY-MM-DD (same convention as the app, never toISOString).
