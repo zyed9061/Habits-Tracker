@@ -38,6 +38,8 @@ server/             Express 5 + node:sqlite
   src/index.js        démarrage sur le port 3001
   src/streaks.js      calcul pur des séries
   src/stats.js        calcul pur des statistiques
+  src/chat.js         POST /api/chat : validation, client OpenAI, limite de débit
+  src/chatPrompt.js   construction pure du prompt et du contexte de données
   src/seed.js         données de démo déterministes
   tests/              110+ tests API et unitaires
 client/             React 18 + Vite + Recharts (proxy /api → 3001)
@@ -61,6 +63,17 @@ Résumé ; le détail (formes JSON, codes d'erreur, cas limites) est dans [API_C
 | `PUT/DELETE /api/habits/:id/checkins/:date` | cocher / décocher (idempotent) |
 | `GET /api/stats/summary` | 4 KPI |
 | `GET /api/stats/heatmap?year`, `/daily?days`, `/weekday?weeks`, `/ranking?days` | visualisations |
+
+## Chatbot d'analyse
+Un bouton flottant sur le dashboard ouvre un assistant qui commente vos résultats (KPI, 30 jours, jours de la semaine, classement, séries, heatmap) et n'en sort pas : les questions hors sujet reçoivent un refus court. Le serveur appelle l'API OpenAI Chat Completions avec le fetch intégré (aucune dépendance).
+
+Configuration dans `server/.env` (ignoré par git, modèle : `server/.env.example`) :
+| Variable | Rôle |
+|---|---|
+| `OPENAI_API_KEY` | clé OpenAI, lue côté serveur uniquement ; sans elle `POST /api/chat` répond 503 |
+| `OPENAI_MODEL` | modèle (défaut `gpt-4`) |
+
+Le fichier est relu à la demande tant que la clé est absente de l'environnement. Les tests n'appellent jamais OpenAI (client simulé). Voir `POST /api/chat` dans [API_CONTRACT.md](API_CONTRACT.md).
 
 ## Limites connues
 - « Aujourd'hui » est calculé par le navigateur pour la grille et par le serveur pour la validation. Identiques sur une même machine ; en cas de décalage d'horloge, cocher « aujourd'hui » peut renvoyer 400 (la case revient à son état et un message s'affiche).

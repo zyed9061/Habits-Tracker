@@ -87,6 +87,14 @@ Un jour compte pour une habitude s'il est prévu **et** ≥ `createdAt`.
 
 `rate30d` = Σ cochés prévus / Σ prévus sur les 30 derniers jours (aujourd'hui inclus), toutes habitudes confondues.
 
+### Chatbot d'analyse (dashboard)
+`POST /api/chat` — répond uniquement à partir des résultats du dashboard ; le serveur reconstitue lui-même les données (mêmes fonctions que `/api/stats/*` : KPI, 30 jours, jours de la semaine sur 12 semaines, classement 30 jours avec séries en cours / meilleures, totaux de la heatmap de l'année) et appelle l'API OpenAI Chat Completions (`OPENAI_MODEL`, défaut `gpt-4`, température 0,2, délai 20 s).
+
+Requête : `{ "message": "…", "history": [{ "role": "user" | "assistant", "content": "…" }], "lang": "fr" | "en" }`
+- `message` obligatoire, non vide, ≤ 500 caractères ; `history` optionnel (rôles `user`/`assistant` uniquement — tout `system` est refusé, contenu ≤ 2000 caractères, seuls les 10 derniers tours sont conservés) ; `lang` optionnel (défaut `fr`), langue de la réponse.
+- Réponse 200 : `{ "reply": "…" }` (texte brut). Hors sujet : refus court dans la langue (« I can only analyse your habit results and advise based on them. »).
+- Erreurs (forme habituelle `{ error: { message } }`, message générique, jamais la clé ni le corps OpenAI) : 400 validation ou JSON invalide ; 429 plus de 20 requêtes / minute / IP ; 503 `OPENAI_API_KEY` absente ; 502 erreur, délai dépassé ou réponse invalide d'OpenAI.
+
 ## 5. Seed
 `npm run seed` (dans `server/`) recrée la base avec 5 habitudes variées (au moins une `weekdays`, une archivée) et environ 120 jours d'historique réaliste, pour que heatmap et graphiques soient lisibles.
 

@@ -3,10 +3,13 @@ import { t } from './i18n/index.js';
 // Client HTTP typé par API_CONTRACT.md. Chaque fonction renvoie le JSON du
 // serveur ou lève une Error portant le message serveur (`error.message`).
 
+// URL du backend (sans slash final). Vide en dev : le proxy Vite sert /api.
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+
 async function request(path, { method = 'GET', body } = {}) {
   let res;
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${API_BASE}/api${path}`, {
       method,
       headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -61,3 +64,7 @@ export const getStatsHeatmap = (year) => request(`/stats/heatmap${query({ year }
 export const getStatsDaily = (days = 30) => request(`/stats/daily${query({ days })}`);
 export const getStatsWeekday = (weeks = 12) => request(`/stats/weekday${query({ weeks })}`);
 export const getStatsRanking = (days = 30) => request(`/stats/ranking${query({ days })}`);
+
+// Chatbot d'analyse du dashboard : le serveur reconstitue lui-même les données.
+export const sendChat = ({ message, history, lang }) =>
+  request('/chat', { method: 'POST', body: { message, history, lang } });
