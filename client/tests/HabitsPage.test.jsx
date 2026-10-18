@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setLang } from '../src/i18n/index.js';
 import HabitsPage from '../src/pages/HabitsPage.jsx';
 import { deferred, habit, mockFetch } from './fetchMock.js';
 
@@ -215,5 +216,26 @@ describe('<HabitsPage /> check-in grid', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Archiver Lire' }));
     await waitFor(() => expect(screen.queryByTestId('habit-1')).not.toBeInTheDocument());
     expect(screen.getByTestId('habit-2')).toBeInTheDocument();
+  });
+});
+
+describe('<HabitsPage /> language switch', () => {
+  afterEach(() => setLang('fr'));
+
+  it('re-translates the confirmation notice when the language changes', async () => {
+    mockFetch({
+      'GET /api/habits': () => [],
+      'GET /api/checkins': () => [],
+      'POST /api/habits': ({ body }) => habit({ ...body, name: 'Lire' }),
+    });
+    render(<HabitsPage />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Créer ma première habitude' }));
+    await userEvent.type(screen.getByLabelText('Nom'), 'Lire');
+    await userEvent.click(screen.getByRole('button', { name: 'Créer' }));
+    expect(await screen.findByText('« Lire » créée.')).toBeInTheDocument();
+
+    act(() => setLang('en'));
+    expect(screen.getByText('“Lire” created.')).toBeInTheDocument();
+    expect(screen.queryByText('« Lire » créée.')).not.toBeInTheDocument();
   });
 });

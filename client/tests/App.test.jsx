@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App.jsx';
+import { setLang } from '../src/i18n/index.js';
 import { habit, mockFetch } from './fetchMock.js';
 
 beforeAll(() => {
@@ -117,5 +118,65 @@ describe('habits page flows', () => {
     expect(screen.getByText('« Sport » désarchivée.')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByTestId('archived-2')).not.toBeInTheDocument());
     expect(f.calls.filter((c) => c.url.startsWith('/api/checkins')).length).toBe(2);
+  });
+});
+
+describe('<App /> language switcher', () => {
+  afterEach(() => setLang('fr'));
+
+  it('offers English and French, defaults to French and switches the whole UI', async () => {
+    mockFetch({ 'GET /api/habits': () => [habit()], 'GET /api/checkins': () => [], ...STATS });
+    renderAt('/');
+    const select = screen.getByRole('combobox', { name: 'Langue' });
+    expect([...select.options].map((o) => o.textContent)).toEqual(['English', 'French']);
+    expect(select).toHaveValue('fr');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mes habitudes' })).toBeInTheDocument();
+
+    await userEvent.selectOptions(select, 'en');
+    expect(await screen.findByRole('heading', { level: 1, name: 'My habits' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+ New habit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'not scheduled' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Language' })).toHaveValue('en');
+    expect(document.documentElement.lang).toBe('en');
+    expect(document.title).toBe('Habits');
+    expect(localStorage.getItem('lang')).toBe('en');
+  });
+
+  it('keeps the language when navigating to the dashboard and translates it', async () => {
+    mockFetch({ 'GET /api/habits': () => [habit()], 'GET /api/checkins': () => [], ...STATS });
+    renderAt('/');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Langue' }), 'en');
+    await userEvent.click(screen.getByRole('link', { name: 'Dashboard' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard' }, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText('Best streak')).toBeInTheDocument();
+    expect(screen.getByText('30-day rate')).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
+  });
+
+  it('translates an already-mounted dashboard when the language changes', async () => {
+    mockFetch({ 'GET /api/habits': () => [habit()], 'GET /api/checkins': () => [], ...STATS });
+    renderAt('/dashboard');
+    expect(await screen.findByText('Meilleure série', {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText('Activité 2026')).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Langue' }), 'en');
+    expect(await screen.findByText('Best streak')).toBeInTheDocument();
+    expect(screen.getByText('Activity 2026')).toBeInTheDocument();
+    expect(screen.queryByText('Meilleure série')).not.toBeInTheDocument();
+    expect(screen.queryByText('Activité 2026')).not.toBeInTheDocument();
+  });
+
+  it('translates validation messages and switches back to French', async () => {
+    mockFetch({ 'GET /api/habits': () => [], 'GET /api/checkins': () => [] });
+    renderAt('/');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Langue' }), 'en');
+    await userEvent.click(await screen.findByRole('button', { name: 'Create my first habit' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('Name is required.')).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Language' }), 'fr');
+    expect(screen.getByRole('button', { name: 'Créer' })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('fr');
   });
 });

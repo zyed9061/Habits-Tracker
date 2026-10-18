@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useI18n } from '../i18n/index.js';
 import './dashboard.css';
 import KpiCards from './KpiCards.jsx';
 import Panel from './Panel.jsx';
@@ -13,6 +14,7 @@ const MIN_YEAR = 1970;
 const noneScheduled = (rows) => !rows?.some((r) => r.scheduled > 0);
 
 export default function DashboardPage() {
+  const { t } = useI18n();
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
 
@@ -25,8 +27,8 @@ export default function DashboardPage() {
   return (
     <div className="dv-page">
       <header className="dv-page__head">
-        <h1>Tableau de bord</h1>
-        <p className="dv-page__lead">Vos habitudes en chiffres.</p>
+        <h1>{t('dash.title')}</h1>
+        <p className="dv-page__lead">{t('dash.lead')}</p>
       </header>
 
       <KpiCards state={summary} />
@@ -35,14 +37,14 @@ export default function DashboardPage() {
         className="dv-panel--wide"
         title={
           <span className="dv-year">
-            Activité {year}
+            {t('dash.activity', { year })}
             <span className="dv-year__nav">
               <button
                 type="button"
                 className="dv-icon-btn"
                 onClick={() => setYear(year - 1)}
                 disabled={year <= MIN_YEAR}
-                aria-label="Année précédente"
+                aria-label={t('dash.prevYear')}
               >
                 ‹
               </button>
@@ -51,17 +53,17 @@ export default function DashboardPage() {
                 className="dv-icon-btn"
                 onClick={() => setYear(year + 1)}
                 disabled={year >= thisYear}
-                aria-label="Année suivante"
+                aria-label={t('dash.nextYear')}
               >
                 ›
               </button>
             </span>
           </span>
         }
-        subtitle="Part des habitudes prévues cochées, jour par jour"
+        subtitle={t('dash.activitySubtitle')}
         state={heatmap}
         isEmpty={isHeatmapEmpty}
-        emptyText={`Aucune habitude prévue en ${year}.`}
+        emptyText={t('dash.noneInYear', { year })}
         skeleton={<div className="dv-skeleton dv-skeleton--heatmap" aria-hidden="true" />}
       >
         {(data) => <Heatmap year={data.year} days={data.days} />}
@@ -69,16 +71,16 @@ export default function DashboardPage() {
 
       <div className="dv-grid-2">
         <Panel
-          title={`Complétion sur ${DAILY_DAYS} jours`}
-          subtitle="Taux quotidien, toutes habitudes"
+          title={t('dash.dailyTitle', { n: DAILY_DAYS })}
+          subtitle={t('dash.dailySubtitle')}
           state={daily}
           isEmpty={noneScheduled}
         >
           {(data) => <DailyChart data={data} />}
         </Panel>
         <Panel
-          title="Par jour de la semaine"
-          subtitle={`Taux moyen sur les ${WEEKDAY_WEEKS} dernières semaines`}
+          title={t('dash.weekdayTitle')}
+          subtitle={t('dash.weekdaySubtitle', { n: WEEKDAY_WEEKS })}
           state={weekday}
           isEmpty={noneScheduled}
         >
@@ -87,8 +89,8 @@ export default function DashboardPage() {
       </div>
 
       <Panel
-        title="Classement des habitudes"
-        subtitle={`Régularité sur ${RANKING_DAYS} jours · 🔥 série en cours`}
+        title={t('dash.rankingTitle')}
+        subtitle={t('dash.rankingSubtitle', { n: RANKING_DAYS })}
         state={ranking}
         isEmpty={(rows) => !rows?.length}
         skeleton={

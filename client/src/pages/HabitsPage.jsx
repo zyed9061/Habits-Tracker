@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../api.js';
 import { lastSevenDays, toDateKey } from '../dates.js';
+import { useI18n } from '../i18n/index.js';
 import HabitForm from '../components/HabitForm.jsx';
 import HabitRow from '../components/HabitRow.jsx';
 
@@ -9,9 +10,9 @@ const ROW_ERROR_MS = 5000;
 
 // Légende interactive : un clic met en évidence les cases correspondantes (un second clic annule).
 const LEGEND_ITEMS = [
-  { id: 'done', label: 'fait', swatch: 'is-checked' },
-  { id: 'scheduled', label: 'prévu', swatch: '' },
-  { id: 'unscheduled', label: 'non prévu', swatch: 'is-unscheduled' },
+  { id: 'done', swatch: 'is-checked' },
+  { id: 'scheduled', swatch: '' },
+  { id: 'unscheduled', swatch: 'is-unscheduled' },
 ];
 
 const cellKey = (habitId, date) => `${habitId}|${date}`;
@@ -25,6 +26,10 @@ const withMember = (set, key, value) => {
 };
 
 export default function HabitsPage() {
+  const { t } = useI18n();
+  // notice, rowErrors et archived.error stockent un descripteur { key, params } traduit au rendu,
+  // pour suivre un changement de langue.
+  const tr = (d) => d && t(d.key, d.params);
   // La grille suit le changement de jour (minuit, onglet resté ouvert, veille).
   const [todayKey, setTodayKey] = useState(() => toDateKey(new Date()));
   const days = useMemo(() => lastSevenDays(), [todayKey]); // recalculé uniquement au changement de jour
@@ -91,8 +96,8 @@ export default function HabitsPage() {
     return () => Object.values(timers).forEach(clearTimeout);
   }, []);
 
-  function showRowError(habitId, message) {
-    setRowErrors((e) => ({ ...e, [habitId]: message }));
+  function showRowError(habitId, descriptor) {
+    setRowErrors((e) => ({ ...e, [habitId]: descriptor }));
     clearTimeout(errorTimers.current[habitId]);
     errorTimers.current[habitId] = setTimeout(() => {
       setRowErrors((e) => {
@@ -121,7 +126,7 @@ export default function HabitsPage() {
       patchHabit(habit.id, { currentStreak: res.currentStreak, bestStreak: res.bestStreak });
     } catch (err) {
       setCell(!done);
-      showRowError(habit.id, `Impossible d'enregistrer : ${err.message}`);
+      showRowError(habit.id, { key: 'habits.saveFailed', params: { error: err.message } });
     } finally {
       setCellPending(false);
     }
@@ -131,25 +136,25 @@ export default function HabitsPage() {
     if (editing.habit) {
       const updated = await api.updateHabit(editing.habit.id, payload);
       patchHabit(updated.id, updated);
-      setNotice(`« ${updated.name} » modifiée.`);
+      setNotice({ key: 'habits.updated', params: { name: updated.name } });
     } else {
       const created = await api.createHabit(payload);
       setHabits((list) => [...list, created].sort((a, b) => a.id - b.id));
-      setNotice(`« ${created.name} » créée.`);
+      setNotice({ key: 'habits.created', params: { name: created.name } });
     }
     setEditing(null);
   }
 
   async function handleArchive(habit) {
-    if (!window.confirm(`Archiver « ${habit.name} » ? Elle n'apparaîtra plus dans la grille.`)) return;
+    if (!window.confirm(t('habits.confirmArchive', { name: habit.name }))) return;
     try {
       await api.archiveHabit(habit.id);
       setHabits((list) => list.filter((h) => h.id !== habit.id));
       if (editing?.habit?.id === habit.id) setEditing(null);
-      setNotice(`« ${habit.name} » archivée.`);
+      setNotice({ key: 'habits.archived', params: { name: habit.name } });
       if (showArchived) loadArchived();
     } catch (err) {
-      showRowError(habit.id, `Archivage impossible : ${err.message}`);
+      showRowError(habit.id, { key: 'habits.archiveFailed', params: { error: err.message } });
     }
   }
 
@@ -157,11 +162,11 @@ export default function HabitsPage() {
     try {
       const restored = await api.unarchiveHabit(habit.id);
       setArchived((a) => ({ ...a, items: a.items.filter((h) => h.id !== habit.id) }));
-      setNotice(`« ${restored.name} » désarchivée.`);
+      setNotice({ key: 'habits.unarchived', params: { name: restored.name } });
       // Recharge la grille pour récupérer les check-ins de l'habitude restaurée.
       load();
     } catch (err) {
-      setArchived((a) => ({ ...a, error: `Désarchivage impossible : ${err.message}` }));
+      setArchived((a) => ({ ...a, error: { key: 'habits.unarchiveFailed', params: { error: err.message } } }));
     }
   }
 
@@ -169,20 +174,20 @@ export default function HabitsPage() {
     <div className="habits-page">
       <div className="page-head">
         <div>
-          <h1>Mes habitudes</h1>
-          <p className="text-muted">Les 7 derniers jours. Touchez une case pour cocher ou décocher.</p>
+          <h1>{t('habits.title')}</h1>
+          <p className="text-muted">{t('habits.lead')}</p>
         </div>
         {!editing && (
           <button type="button" className="btn btn--primary" onClick={() => setEditing({ habit: null })}>
-            + Nouvelle habitude
+            {t('habits.new')}
           </button>
         )}
       </div>
 
       {notice && (
         <p className="alert alert--info" role="status">
-          {notice}
-          <button type="button" className="alert__close" onClick={() => setNotice(null)} aria-label="Fermer le message">
+          {tr(notice)}
+          <button type="button" className="alert__close" onClick={() => setNotice(null)} aria-label={t('habits.closeMessage')}>
             ×
           </button>
         </p>
@@ -199,25 +204,25 @@ export default function HabitsPage() {
 
       {status === 'loading' && (
         <p className="state" role="status">
-          Chargement des habitudes…
+          {t('habits.loading')}
         </p>
       )}
 
       {status === 'error' && (
         <div className="state state--error" role="alert">
-          <p>Impossible de charger les habitudes : {loadError}</p>
+          <p>{t('habits.loadError', { error: loadError })}</p>
           <button type="button" className="btn" onClick={load}>
-            Réessayer
+            {t('habits.retry')}
           </button>
         </div>
       )}
 
       {status === 'ready' && habits.length === 0 && (
         <div className="state">
-          <p>Aucune habitude active pour le moment.</p>
+          <p>{t('habits.empty')}</p>
           {!editing && (
             <button type="button" className="btn btn--primary" onClick={() => setEditing({ habit: null })}>
-              Créer ma première habitude
+              {t('habits.createFirst')}
             </button>
           )}
         </div>
@@ -225,7 +230,7 @@ export default function HabitsPage() {
 
       {status === 'ready' && habits.length > 0 && (
         <>
-          <ul className="habit-list" aria-label="Habitudes actives" data-highlight={highlight ?? undefined}>
+          <ul className="habit-list" aria-label={t('habits.activeList')} data-highlight={highlight ?? undefined}>
             {habits.map((habit) => (
               <HabitRow
                 key={habit.id}
@@ -236,11 +241,11 @@ export default function HabitsPage() {
                 onToggle={(date, done) => toggle(habit, date, done)}
                 onEdit={() => setEditing({ habit })}
                 onArchive={() => handleArchive(habit)}
-                error={rowErrors[habit.id]}
+                error={tr(rowErrors[habit.id])}
               />
             ))}
           </ul>
-          <div className="legend" role="group" aria-label="Mettre en évidence dans la grille">
+          <div className="legend" role="group" aria-label={t('legend.group')}>
             {LEGEND_ITEMS.map((item) => (
               <button
                 key={item.id}
@@ -252,14 +257,14 @@ export default function HabitsPage() {
                 <span className={`legend__swatch week-cell ${item.swatch}`} aria-hidden="true">
                   {item.id === 'done' ? '✓' : ''}
                 </span>
-                {item.label}
+                {t(`legend.${item.id}`)}
               </button>
             ))}
           </div>
         </>
       )}
 
-      <section className="archived" aria-label="Archives">
+      <section className="archived" aria-label={t('habits.archivesSection')}>
         <button
           type="button"
           className="btn btn--ghost"
@@ -267,25 +272,25 @@ export default function HabitsPage() {
           aria-controls="archived-panel"
           onClick={() => setShowArchived((v) => !v)}
         >
-          {showArchived ? 'Masquer les archivées' : 'Voir les archivées'}
+          {showArchived ? t('habits.hideArchived') : t('habits.showArchived')}
         </button>
         {showArchived && (
           <div id="archived-panel">
-            <h2 id="archived-title">Habitudes archivées</h2>
-            {archived.status === 'loading' && <p className="state" role="status">Chargement…</p>}
+            <h2 id="archived-title">{t('habits.archivedList')}</h2>
+            {archived.status === 'loading' && <p className="state" role="status">{t('habits.archivedLoading')}</p>}
             {archived.error && (
               <div className="state state--error" role="alert">
-                <p>{archived.error}</p>
+                <p>{tr(archived.error)}</p>
                 <button type="button" className="btn" onClick={loadArchived}>
-                  Réessayer
+                  {t('habits.retry')}
                 </button>
               </div>
             )}
             {archived.status === 'ready' && archived.items.length === 0 && (
-              <p className="state">Aucune habitude archivée.</p>
+              <p className="state">{t('habits.archivedEmpty')}</p>
             )}
             {archived.items.length > 0 && (
-              <ul className="archived-list" aria-label="Habitudes archivées">
+              <ul className="archived-list" aria-label={t('habits.archivedList')}>
                 {archived.items.map((h) => (
                   <li key={h.id} className="card archived-item" data-testid={`archived-${h.id}`}>
                     <span aria-hidden="true">{h.icon}</span>
@@ -294,9 +299,9 @@ export default function HabitsPage() {
                       type="button"
                       className="btn btn--sm"
                       onClick={() => handleUnarchive(h)}
-                      aria-label={`Désarchiver ${h.name}`}
+                      aria-label={t('habits.unarchiveAria', { name: h.name })}
                     >
-                      Désarchiver
+                      {t('habits.unarchive')}
                     </button>
                   </li>
                 ))}
