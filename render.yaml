@@ -1,0 +1,19 @@
+# Render Blueprint: hosts the Express API (server/). Data is ephemeral on the free plan (SQLite file is lost on redeploy).
+services:
+  - type: web
+    name: habits-tracker-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/habits
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: CORS_ORIGINS
+        value: https://zyed9061.github.io
+      - key: OPENAI_MODEL
+        value: gpt-4
+      - key: OPENAI_API_KEY
+        sync: false # entered in the Render dashboard, never committed

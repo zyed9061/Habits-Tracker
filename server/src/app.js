@@ -1,4 +1,5 @@
 import express from 'express';
+import { corsMiddleware } from './cors.js';
 import { createChatRouter } from './chat.js';
 import { isValidDate, todayStr } from './dates.js';
 import { createRepository } from './repository.js';
@@ -17,11 +18,13 @@ import {
  * Builds the Express app without listening.
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {{ today?: () => string, chat?: object }} [options] `today` overrides the local date (tests);
- * `chat` overrides the chatbot dependencies (getConfig, createClient, allow) so tests never call OpenAI.
+ * `chat` overrides the chatbot dependencies (getConfig, createClient, allow) so tests never call OpenAI;
+ * `corsOrigins` overrides the allowed browser origins (defaults to the CORS_ORIGINS env var).
  */
-export function createApp(db, { today = todayStr, chat = {} } = {}) {
+export function createApp(db, { today = todayStr, chat = {}, corsOrigins } = {}) {
   const repo = createRepository(db);
   const app = express();
+  app.use(corsMiddleware(corsOrigins));
   app.use(express.json());
 
   const withStreaks = (habit, dates) => ({ ...habit, ...computeStreaks(habit.frequency, dates, today()) });
