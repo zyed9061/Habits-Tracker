@@ -1,4 +1,5 @@
 import express from 'express';
+import { createChatRouter } from './chat.js';
 import { isValidDate, todayStr } from './dates.js';
 import { createRepository } from './repository.js';
 import * as stats from './stats.js';
@@ -15,9 +16,10 @@ import {
 /**
  * Builds the Express app without listening.
  * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ today?: () => string }} [options] `today` overrides the local date (tests).
+ * @param {{ today?: () => string, chat?: object }} [options] `today` overrides the local date (tests);
+ * `chat` overrides the chatbot dependencies (getConfig, createClient, allow) so tests never call OpenAI.
  */
-export function createApp(db, { today = todayStr } = {}) {
+export function createApp(db, { today = todayStr, chat = {} } = {}) {
   const repo = createRepository(db);
   const app = express();
   app.use(express.json());
@@ -140,6 +142,27 @@ export function createApp(db, { today = todayStr } = {}) {
     const { habits, checkins } = active();
     res.json(stats.ranking(habits, checkins, days, today()));
   });
+
+  // --- Chatbot : analyse des résultats du dashboard ----------------------------
+
+  function dashboardData() {
+    const t = today();
+    const { habits, checkins } = active();
+    const byHabit = stats.indexCheckins(checkins);
+    return {
+      today: t,
+      habits: habits.map((h) => ({ id: h.id, ...streaksOf(h, byHabit, t) })),
+      summary: stats.summary(habits, checkins, t),
+      daily: stats.daily(habits, checkins, 30, t),
+      weekday: stats.weekday(habits, checkins, 12, t),
+      ranking: stats.ranking(habits, checkins, 30, t),
+      heatmap: stats.heatmap(habits, checkins, Number(t.slice(0, 4)), t),
+    };
+  }
+
+  const streaksOf = (h, byHabit, t) => computeStreaks(h.frequency, [...(byHabit.get(h.id) ?? [])], t);
+
+  app.use('/api/chat', createChatRouter({ getData: dashboardData, ...chat }));
 
   // --- Errors ------------------------------------------------------------------
 
