@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/index.js';
+import ChatWidget from '../components/ChatWidget.jsx';
 import './dashboard.css';
 import KpiCards from './KpiCards.jsx';
 import Panel from './Panel.jsx';
@@ -103,6 +104,7 @@ export default function DashboardPage() {
       >
         {(data) => <RankingChart data={data} />}
       </Panel>
+      <ChatWidget />
     </div>
   );
 }
